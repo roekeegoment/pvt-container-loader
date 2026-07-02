@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PVT Container Loader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body,#root{height:100%;overflow:hidden;}
+body{background:#080c12;font-family:'Inter',system-ui,sans-serif;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px;}
+select,input{outline:none;}
+select option{background:#0a0f18;}
+button{font-family:inherit;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useRef,useMemo}=React;
+
+/* ── SKU CATALOG ─────────────────────────────────────────────────────────── */
+const SKUS=[
+  {id:"manual",name:"— กรอกเอง —",               can:"",          l:348,w:262,h:95, gwMin:6.22, gwMax:6.3  },
+  {id:"s12",  name:"12/15oz. SQ เตี้ย ★",        can:"12/425 SQ", l:348,w:262,h:95, gwMin:6.22, gwMax:6.3  },
+  {id:"s1",   name:"6/108 oz.",                   can:"6/3050",    l:469,w:313,h:183,gwMin:21.0, gwMax:21.12},
+  {id:"s2",   name:"24/30 oz.",                   can:"24/850",    l:410,w:306,h:243,gwMin:23.6, gwMax:23.6 },
+  {id:"s3",   name:"12/30 oz.",                   can:"12/850",    l:408,w:306,h:125,gwMin:12.0, gwMax:12.0 },
+  {id:"s4",   name:"6/30 oz.",                    can:"6/850",     l:306,w:204,h:125,gwMin:6.16, gwMax:6.16 },
+  {id:"s5",   name:"24/20 oz.",                   can:"24/565",    l:343,w:260,h:235,gwMin:16.0, gwMax:16.8 },
+  {id:"s6",   name:"12/20 oz. (ถาด)",             can:"12/565",    l:355,w:260,h:65, gwMin:8.0,  gwMax:8.0  },
+  {id:"s7",   name:"12/20 oz.",                   can:"12/565",    l:343,w:257,h:123,gwMin:8.02, gwMax:8.4  },
+  {id:"s8",   name:"24/15 oz. สูง",               can:"24/425สูง", l:305,w:225,h:230,gwMin:12.48,gwMax:12.60},
+  {id:"s9",   name:"12/15 oz. สูง",               can:"12/425สูง", l:305,w:225,h:117,gwMin:null, gwMax:null },
+  {id:"s10",  name:"24/15 oz. SQ เตี้ย",          can:"24/425 SQ", l:345,w:260,h:185,gwMin:12.7, gwMax:12.7 },
+  {id:"s11",  name:"24/15 oz. SQ มีฝาส้อม",       can:"24/425 SQ", l:358,w:270,h:190,gwMin:13.2, gwMax:13.2 },
+  {id:"s13",  name:"24/8 oz.",                    can:"24/227",    l:343,w:257,h:110,gwMin:7.4,  gwMax:7.4  },
+  {id:"s14",  name:"24/8 oz. มีฝาส้อม",           can:"24/227",    l:358,w:268,h:115,gwMin:7.5,  gwMax:7.5  },
+  {id:"s15",  name:"12/46 oz.",                   can:"12/1.36L",  l:435,w:327,h:183,gwMin:19.46,gwMax:19.46},
+  {id:"s16",  name:"24/20 oz. มีฝาส้อม",          can:"24/565",    l:358,w:270,h:242,gwMin:16.0, gwMax:16.8 },
+  {id:"s17",  name:"12/30 oz. ชิงค์ถุง",          can:"12/850",    l:414,w:312,h:131,gwMin:null, gwMax:null },
+  {id:"s18",  name:"24/30 oz. 5 ชั้น",            can:"24/850",    l:415,w:310,h:253,gwMin:24.2, gwMax:24.2 },
+  {id:"s19",  name:"3/108 oz.",                   can:"3/3050",    l:468,w:155,h:180,gwMin:10.5, gwMax:10.5 },
+  {id:"s20",  name:"6/108 oz. สีขาว",             can:"6/3050",    l:469,w:313,h:183,gwMin:21.0, gwMax:21.12},
+  {id:"s21",  name:"6/15 oz.",                    can:"6/425",     l:226,w:155,h:115,gwMin:3.08, gwMax:3.12 },
+  {id:"s22",  name:"6/20 oz.",                    can:"6/565",     l:260,w:175,h:121,gwMin:4.10, gwMax:4.20 },
+  {id:"s23",  name:"12/46 oz. สีขาว",             can:"12/1.36L",  l:435,w:327,h:183,gwMin:19.46,gwMax:19.46},
+  {id:"s24",  name:"6/108 oz. 5 ชั้น",            can:"6/3050",    l:475,w:318,h:190,gwMin:21.0, gwMax:21.0 },
+  {id:"s25",  name:"12/20 oz. สีขาว",             can:"12/565",    l:343,w:257,h:123,gwMin:8.02, gwMax:8.4  },
+  {id:"s26",  name:"24/20 oz. SHRINK FILM",        can:"24/565",    l:350,w:260,h:245,gwMin:16.0, gwMax:16.8 },
+  {id:"s27",  name:"24/30 oz. แข็งแรง",           can:"24/850",    l:410,w:306,h:243,gwMin:23.6, gwMax:23.6 },
+  {id:"s28",  name:"12/46 oz. แข็งแรง ตาล",       can:"12/1.36L",  l:435,w:327,h:183,gwMin:19.46,gwMax:19.46},
+  {id:"s29",  name:"12/30 oz. สีขาว",             can:"12/850",    l:408,w:306,h:125,gwMin:12.0, gwMax:12.0 },
+];
+
+const CONT={
+  "20ft Standard": {l:5898, w:2352,h:2393,maxPay:28000},
+  "40ft Standard": {l:12032,w:2352,h:2393,maxPay:26700},
+  "40ft High Cube":{l:12032,w:2352,h:2698,maxPay:26460},
+};
+
+const PALLETS={
+  "EUR/EPAL (1200×800)": {l:1200,w:800, h:145},
+  "US/GMA (1219×1016)":  {l:1219,w:1016,h:145},
+  "Thai Std (1100×1100)":{l:1100,w:1100,h:150},
+  "Custom":              {l:1200,w:1000,h:145},
+};
+
+const ICOLS=[0x22c55e,0x3b82f6,0xf97316,0xa855f7];
+const ICSS=["#22c55e","#3b82f6","#f97316","#a855f7"];
+
+/* ── CALC: SINGLE ────────────────────────────────────────────────────────── */
+function calcUniform(C,bl,bw,bh){
+  const nl=Math.floor(C.l/bl),nw=Math.floor(C.w/bw),nh=Math.floor(C.h/bh);
+  const pos=[];
+  for(let li=0;li<nl;li++)for(let wi=0;wi<nw;wi++)for(let hi=0;hi<nh;hi++)
+    pos.push({x:li*bl,y:hi*bh,z:wi*bw,sx:bl,sy:bh,sz:bw});
+  return{pos,total:nl*nw*nh,perLayer:nl*nw,layers:nh,wUsed:nw*bw};
+}
+function calcMixed(C,groups,bh){
+  const nh=Math.floor(C.h/bh),pos=[];
+  let z=0,perLayer=0;
+  for(const{n,bw,bl}of groups){
+    const nl=Math.floor(C.l/bl);
+    for(let r=0;r<n&&z+bw<=C.w+8;r++){
+      perLayer+=nl;
+      for(let li=0;li<nl;li++)for(let hi=0;hi<nh;hi++)
+        pos.push({x:li*bl,y:hi*bh,z,sx:bl,sy:bh,sz:bw});
+      z+=bw;
+    }
+  }
+  return{pos,total:pos.length,perLayer,layers:nh,wUsed:z};
+}
+function getPatterns(C,L,W,H){
+  return[
+    {id:"p3_3_2",name:"3+3+2 Alternating",tag:"แนะนำ",flat:true,
+     calc:()=>calcMixed(C,[{n:3,bw:W,bl:L},{n:3,bw:L,bl:W},{n:2,bw:W,bl:L}],H)},
+    {id:"p6_2", name:"6+2 Pattern",       tag:"",      flat:true,
+     calc:()=>calcMixed(C,[{n:6,bw:W,bl:L},{n:2,bw:L,bl:W}],H)},
+    {id:"uA",name:"Uniform A",tag:"",flat:true, calc:()=>calcUniform(C,L,W,H)},
+    {id:"uB",name:"Uniform B",tag:"",flat:true, calc:()=>calcUniform(C,W,L,H)},
+    {id:"uC",name:"Upright A",tag:"",flat:false,calc:()=>calcUniform(C,L,H,W)},
+    {id:"uD",name:"Upright B",tag:"",flat:false,calc:()=>calcUniform(C,W,H,L)},
+  ].map(p=>({...p,r:p.calc()}));
+}
+
+/* ── CALC: PALLET ────────────────────────────────────────────────────────── */
+function calcPalletLoad(C,box,pal){
+  const{L:bl,W:bw,H:bh}=box,{l:pl,w:pw,h:ph}=pal;
+  const availH=C.h-ph-50;
+  const bLayH=Math.max(1,Math.floor(availH/bh));
+  let best=null;
+  for(const[bBL,bBW]of[[bl,bw],[bw,bl]]){
+    for(const[pL,pW]of[[pl,pw],[pw,pl]]){
+      const bOnL=Math.floor(pL/bBL),bOnW=Math.floor(pW/bBW);
+      const bPerPal=bOnL*bOnW*bLayH;
+      const pCL=Math.floor(C.l/pL),pCW=Math.floor(C.w/pW);
+      const totPal=pCL*pCW,totBox=totPal*bPerPal;
+      if(!best||totBox>best.totalBoxes){
+        const pos=[],palPos=[];
+        for(let pi=0;pi<pCL;pi++)for(let pj=0;pj<pCW;pj++){
+          const px=pi*pL,pz=pj*pW;
+          palPos.push({x:px,y:0,z:pz,sx:pL,sy:ph,sz:pW});
+          for(let bi=0;bi<bOnL;bi++)for(let bj=0;bj<bOnW;bj++)for(let bk=0;bk<bLayH;bk++)
+            pos.push({x:px+bi*bBL,y:ph+bk*bh,z:pz+bj*bBW,sx:bBL,sy:bh,sz:bBW});
+        }
+        best={totalBoxes:totBox,totalPallets:totPal,boxesPerPallet:bPerPal,
+          boxesPerLayer:bOnL*bOnW,boxLayersH:bLayH,pos,palPos,
+          usedL:pCL*pL,usedW:pCW*pW,palletsL:pCL,palletsW:pCW};
+      }
+    }
+  }
+  return best||{totalBoxes:0,totalPallets:0,boxesPerPallet:0,boxesPerLayer:0,boxLayersH:0,pos:[],palPos:[],usedL:0,usedW:0,palletsL:0,palletsW:0};
+}
+
+/* ── CALC: MIX ───────────────────────────────────────────────────────────── */
+function calcMixLoad(C,items){
+  const results=[];let curX=0;
+  for(const item of items){
+    const{L,W,H,wt}=item.box,subLen=item.allocLen||0;
+    if(subLen<=0){results.push({total:0,pos:[],perLayer:0,layers:0,wt,allocLen:0});continue;}
+    const orients=[
+      {bl:L,bw:W,bh:H},{bl:W,bw:L,bh:H},{bl:L,bw:H,bh:W},
+      {bl:H,bw:L,bh:W},{bl:W,bw:H,bh:L},{bl:H,bw:W,bh:L},
+    ];
+    let best={total:0,pos:[],perLayer:0,layers:0,bl:L,bw:W,bh:H};
+    for(const o of orients){
+      const nl=Math.floor(subLen/o.bl),nw=Math.floor(C.w/o.bw),nh=Math.floor(C.h/o.bh);
+      const total=nl*nw*nh;
+      if(total>best.total){
+        const pos=[];
+        for(let li=0;li<nl;li++)for(let wi=0;wi<nw;wi++)for(let hi=0;hi<nh;hi++)
+          pos.push({x:curX+li*o.bl,y:hi*o.bh,z:wi*o.bw,sx:o.bl,sy:o.bh,sz:o.bw});
+        best={total,pos,perLayer:nl*nw,layers:nh,...o};
+      }
+    }
+    results.push({...best,wt,allocLen:subLen});
+    curX+=subLen;
+  }
+  return results;
+}
+
+/* ── THREE.JS ────────────────────────────────────────────────────────────── */
+function buildScene(el,C){
+  const W=el.clientWidth||800,H=el.clientHeight||500;
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x080c12);
+  const camera=new THREE.PerspectiveCamera(42,W/H,0.1,1000);
+  const renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(W,H);renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  el.appendChild(renderer.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff,0.5));
+  const sun=new THREE.DirectionalLight(0xfffde7,1.0);sun.position.set(10,15,8);scene.add(sun);
+  const fill=new THREE.DirectionalLight(0x4dd0e1,0.3);fill.position.set(-8,5,-6);scene.add(fill);
+  const S=100,cL=C.l/S,cH=C.h/S,cW=C.w/S;
+  const cGeo=new THREE.BoxGeometry(cL,cH,cW);
+  const wall=new THREE.Mesh(cGeo,new THREE.MeshPhongMaterial({color:0x0d2137,transparent:true,opacity:0.1,side:THREE.BackSide}));
+  wall.position.set(cL/2,cH/2,cW/2);scene.add(wall);
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(cGeo),new THREE.LineBasicMaterial({color:0x0ea5e9,transparent:true,opacity:0.65}));
+  edges.position.set(cL/2,cH/2,cW/2);scene.add(edges);
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(cL,0.04,cW),new THREE.MeshPhongMaterial({color:0xb45309}));
+  floor.position.set(cL/2,0.02,cW/2);scene.add(floor);
+  return{scene,camera,renderer,S,cL,cH,cW};
+}
+function addIM(scene,S,pos,color,gap=1.8){
+  if(!pos||!pos.length)return;
+  const N=Math.min(pos.length,20000);
+  const geo=new THREE.BoxGeometry(1,1,1);
+  const ec=new THREE.Color(color);ec.r*=0.15;ec.g*=0.15;ec.b*=0.15;
+  const mat=new THREE.MeshPhongMaterial({color,emissive:ec,shininess:20});
+  const mesh=new THREE.InstancedMesh(geo,mat,N);
+  mesh.userData.dyn=true;
+  const dummy=new THREE.Object3D();
+  for(let i=0;i<N;i++){
+    const p=pos[i];
+    dummy.position.set((p.x+p.sx/2)/S,(p.y+p.sy/2)/S,(p.z+p.sz/2)/S);
+    dummy.scale.set((p.sx-gap)/S,(p.sy-gap)/S,(p.sz-gap)/S);
+    dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate=true;scene.add(mesh);
+}
+function clearDyn(scene){
+  scene.children.filter(c=>c.userData.dyn).forEach(c=>{scene.remove(c);c.geometry&&c.geometry.dispose();c.material&&c.material.dispose();});
+}
+
+/* ── SHARED STYLES ───────────────────────────────────────────────────────── */
+const fmt=n=>Math.round(n).toLocaleString();
+const fmtD=(n,d=1)=>n.toFixed(d);
+const gwAvg=s=>s.gwMin!=null?+((s.gwMin+s.gwMax)/2).toFixed(3):6.0;
+const SEL={width:"100%",background:"#0a0f18",border:"1px solid #111827",borderRadius:"5px",color:"#e2e8f0",padding:"7px 10px",fontSize:"12px",cursor:"pointer"};
+const INP={width:"100%",background:"#0a0f18",border:"1px solid #111827",borderRadius:"5px",color:"#e2e8f0",padding:"6px 8px",fontSize:"13px",boxSizing:"border-box",fontVariantNumeric:"tabular-nums"};
+
+/* ── HELPER COMPONENTS ───────────────────────────────────────────────────── */
+function FG({label,children,action}){
+  return<div style={{marginBottom:"14px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"7px"}}>
+      <div style={{fontSize:"9px",color:"#0ea5e9",textTransform:"uppercase",letterSpacing:"0.18em",fontWeight:700}}>{label}</div>
+      {action}
+    </div>
+    {children}
+  </div>;
+}
+function SkuChip({sku}){
+  if(!sku||sku.id==="manual")return null;
+  return<div style={{marginTop:"5px",background:"#0a0f18",border:"1px solid #111827",borderRadius:"5px",padding:"6px 9px"}}>
+    {[["Can",sku.can],["W×L×H",sku.w+"×"+sku.l+"×"+sku.h+"mm"],
+      ["GW",sku.gwMin!=null?(sku.gwMin===sku.gwMax?sku.gwMin+"kg":sku.gwMin+"–"+sku.gwMax+"kg"):"N/A"]
+    ].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:"2px",fontSize:"10px"}}>
+      <span style={{color:"#475569"}}>{k}</span>
+      <span style={{color:k==="GW"?"#fbbf24":"#94a3b8",fontWeight:k==="GW"?700:400}}>{v}</span>
+    </div>)}
+  </div>;
+}
+
+/* ── MAIN APP ────────────────────────────────────────────────────────────── */
+function App(){
+  const[mode,setMode]=useState("single");
+  const[cKey,setCKey]=useState("20ft Standard");
+  const[sideOpen,setSide]=useState(true);
+
+  /* Single */
+  const[skuId,setSkuId]=useState("s12");
+  const[box,setBox]=useState({L:348,W:262,H:95,wt:6.26});
+  const[pid,setPid]=useState("p3_3_2");
+  const[hov,setHov]=useState(null);
+
+  /* Pallet */
+  const[palSkuId,setPalSkuId]=useState("s12");
+  const[palBox,setPalBox]=useState({L:348,W:262,H:95,wt:6.26});
+  const[palKey,setPalKey]=useState("EUR/EPAL (1200×800)");
+  const[palDims,setPalDims]=useState({l:1200,w:800,h:145});
+
+  /* Mix */
+  const mkItem=sid=>{const s=SKUS.find(x=>x.id===sid)||SKUS[1];return{skuId:sid,box:{L:s.l,W:s.w,H:s.h,wt:gwAvg(s)},allocLen:0};};
+  const[mixItems,setMixItems]=useState(()=>{
+    const C0=CONT["20ft Standard"];
+    return[{...mkItem("s12"),allocLen:Math.floor(C0.l/2)},{...mkItem("s2"),allocLen:Math.floor(C0.l/2)}];
+  });
+
+  const mountRef=useRef(null);const threeRef=useRef(null);
+  const isDrag=useRef(false);const pm=useRef({x:0,y:0});
+  const camSt=useRef({theta:0.9,phi:1.05,r:42});
+
+  const C=CONT[cKey];
+
+  /* Calculations */
+  const patterns=useMemo(()=>getPatterns(C,box.L,box.W,box.H),[C,box.L,box.W,box.H]);
+  const actPat=patterns.find(p=>p.id===pid)||patterns[0];
+  const singRes=actPat.r;
+  const palRes=useMemo(()=>calcPalletLoad(C,palBox,palDims),[C,palBox,palDims]);
+  const mixRes=useMemo(()=>calcMixLoad(C,mixItems),[C,mixItems]);
+
+  /* 3D layers */
+  const layers3D=useMemo(()=>{
+    if(mode==="single")return[{pos:singRes.pos,color:0x22c55e}];
+    if(mode==="pallet")return[{pos:palRes.palPos,color:0xd97706,gap:0.8},{pos:palRes.pos,color:0x22c55e}];
+    if(mode==="mix")return mixRes.map((r,i)=>({pos:r.pos,color:ICOLS[i]}));
+    return[];
+  },[mode,singRes,palRes,mixRes]);
+
+  /* Summary */
+  const summ=useMemo(()=>{
+    if(mode==="single")return{boxes:singRes.total,wt:singRes.total*box.wt};
+    if(mode==="pallet")return{boxes:palRes.totalBoxes,wt:palRes.totalBoxes*palBox.wt};
+    if(mode==="mix")return mixRes.reduce((a,r)=>({boxes:a.boxes+r.total,wt:a.wt+r.total*r.wt}),{boxes:0,wt:0});
+    return{boxes:0,wt:0};
+  },[mode,singRes,palRes,mixRes,box.wt,palBox.wt]);
+
+  /* Three.js setup */
+  useEffect(()=>{
+    const el=mountRef.current;if(!el)return;
+    const three=buildScene(el,C);threeRef.current=three;
+    const{camera:cam3,renderer,cL,cH,cW}=three;
+    const updCam=()=>{
+      const{theta,phi,r}=camSt.current;
+      cam3.position.set(cL/2+r*Math.sin(phi)*Math.sin(theta),cH/2+r*Math.cos(phi),cW/2+r*Math.sin(phi)*Math.cos(theta));
+      cam3.lookAt(cL/2,cH/2,cW/2);
+    };
+    updCam();threeRef.current.updCam=updCam;
+    let fId;const tick=()=>{fId=requestAnimationFrame(tick);renderer.render(three.scene,cam3);};tick();
+    const hr=()=>{if(!mountRef.current)return;const w=mountRef.current.clientWidth,h=mountRef.current.clientHeight;renderer.setSize(w,h);cam3.aspect=w/h;cam3.updateProjectionMatrix();};
+    const cv=renderer.domElement;
+    const gxy=e=>({x:e.clientX!=null?e.clientX:e.touches&&e.touches[0]?e.touches[0].clientX:0,y:e.clientY!=null?e.clientY:e.touches&&e.touches[0]?e.touches[0].clientY:0});
+    const onDn=e=>{isDrag.current=true;pm.current=gxy(e);};
+    const onMv=e=>{if(!isDrag.current)return;const{x,y}=gxy(e);camSt.current.theta-=(x-pm.current.x)*0.007;camSt.current.phi=Math.max(0.12,Math.min(1.55,camSt.current.phi+(y-pm.current.y)*0.007));pm.current={x,y};updCam();};
+    const onUp=()=>{isDrag.current=false;};
+    const onWh=e=>{e.preventDefault();camSt.current.r=Math.max(8,Math.min(100,camSt.current.r+e.deltaY*0.025));updCam();};
+    cv.addEventListener("mousedown",onDn);cv.addEventListener("touchstart",onDn,{passive:true});
+    window.addEventListener("mousemove",onMv);window.addEventListener("touchmove",onMv,{passive:true});
+    window.addEventListener("mouseup",onUp);window.addEventListener("touchend",onUp);
+    cv.addEventListener("wheel",onWh,{passive:false});window.addEventListener("resize",hr);
+    return()=>{
+      cancelAnimationFrame(fId);
+      cv.removeEventListener("mousedown",onDn);cv.removeEventListener("touchstart",onDn);
+      window.removeEventListener("mousemove",onMv);window.removeEventListener("touchmove",onMv);
+      window.removeEventListener("mouseup",onUp);window.removeEventListener("touchend",onUp);
+      cv.removeEventListener("wheel",onWh);window.removeEventListener("resize",hr);
+      renderer.dispose();if(el.contains(cv))el.removeChild(cv);threeRef.current=null;
+    };
+  },[cKey]);
+
+  useEffect(()=>{
+    const t=threeRef.current;if(!t)return;
+    clearDyn(t.scene);
+    layers3D.forEach(l=>addIM(t.scene,t.S,l.pos,l.color,l.gap));
+  },[layers3D]);
+
+  /* Handlers */
+  const handleSku=id=>{setSkuId(id);const s=SKUS.find(x=>x.id===id);if(s&&id!=="manual")setBox({L:s.l,W:s.w,H:s.h,wt:gwAvg(s)});};
+  const handlePalSku=id=>{setPalSkuId(id);const s=SKUS.find(x=>x.id===id);if(s&&id!=="manual")setPalBox({L:s.l,W:s.w,H:s.h,wt:gwAvg(s)});};
+  const handlePalType=key=>{setPalKey(key);if(key!=="Custom")setPalDims({...PALLETS[key]});};
+  const setMixSku=(idx,sid)=>{const s=SKUS.find(x=>x.id===sid)||SKUS[1];setMixItems(its=>its.map((it,i)=>i===idx?{...it,skuId:sid,box:{L:s.l,W:s.w,H:s.h,wt:gwAvg(s)}}:it));};
+  const setMixAlloc=(idx,val)=>setMixItems(its=>its.map((it,i)=>i===idx?{...it,allocLen:+val||0}:it));
+  const addMix=()=>{if(mixItems.length>=4)return;const rem=C.l-mixItems.reduce((s,i)=>s+i.allocLen,0);setMixItems(its=>[...its,{...mkItem("s12"),allocLen:Math.max(0,rem)}]);};
+  const delMix=idx=>{if(mixItems.length<=1)return;setMixItems(its=>its.filter((_,i)=>i!==idx));};
+  const autoBalance=()=>{const n=mixItems.length,each=Math.floor(C.l/n);setMixItems(its=>its.map((it,i)=>({...it,allocLen:i<n-1?each:C.l-each*(n-1)})));};
+  const setBoxF=k=>e=>{setSkuId("manual");setBox(b=>({...b,[k]:parseFloat(e.target.value)||0}));};
+  const setPalBoxF=k=>e=>setPalBox(b=>({...b,[k]:parseFloat(e.target.value)||0}));
+
+  const curSku=SKUS.find(s=>s.id===skuId);
+  const curPalSku=SKUS.find(s=>s.id===palSkuId);
+  const mixUsed=mixItems.reduce((s,i)=>s+i.allocLen,0);
+  const wtOk=summ.wt<=C.maxPay;
+
+  /* RENDER */
+  return(
+    <div style={{display:"flex",height:"100vh",background:"#080c12",color:"#e2e8f0",overflow:"hidden"}}>
+
+      {/* SIDEBAR */}
+      <div style={{width:sideOpen?"300px":"0",flexShrink:0,display:"flex",flexDirection:"column",
+        borderRight:sideOpen?"1px solid #111827":"none",overflowY:"auto",overflowX:"hidden",
+        transition:"width 0.25s ease",background:"#080c12"}}>
+        <div style={{minWidth:"300px"}}>
+
+          {/* Header */}
+          <div style={{padding:"12px 15px",background:"#0a0f18",borderBottom:"1px solid #111827"}}>
+            <div style={{fontSize:"9px",letterSpacing:"0.2em",color:"#0ea5e9",fontWeight:700}}>PVT FOODS INDUSTRIES</div>
+            <div style={{fontSize:"17px",fontWeight:900,color:"#f8fafc",letterSpacing:"-0.03em"}}>Container Loader</div>
+          </div>
+
+          {/* Mode Tabs */}
+          <div style={{display:"flex",borderBottom:"1px solid #111827",background:"#0a0f18"}}>
+            {[["single","📦 Single"],["pallet","🏗 Pallet"],["mix","🎨 Mix Load"]].map(([m,lbl])=>(
+              <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"9px 4px",border:"none",fontSize:"11px",fontWeight:600,cursor:"pointer",
+                background:mode===m?"#080c12":"transparent",
+                color:mode===m?"#4ade80":"#475569",
+                borderBottom:mode===m?"2px solid #4ade80":"2px solid transparent"}}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          <div style={{padding:"13px 15px"}}>
+
+            {/* Container (shared) */}
+            <FG label="Container">
+              <select value={cKey} onChange={e=>setCKey(e.target.value)} style={SEL}>
+                {Object.keys(CONT).map(k=><option key={k}>{k}</option>)}
+              </select>
+              <div style={{fontSize:"10px",color:"#334155",marginTop:"3px"}}>
+                {C.l.toLocaleString()}×{C.w}×{C.h}mm · payload {(C.maxPay/1000).toFixed(1)}t
+              </div>
+            </FG>
+
+            {/* ── SINGLE ── */}
+            {mode==="single"&&<>
+              <FG label="Product SKU">
+                <select value={skuId} onChange={e=>handleSku(e.target.value)} style={{...SEL,color:"#4ade80",fontWeight:600}}>
+                  {SKUS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <SkuChip sku={curSku}/>
+              </FG>
+              <FG label="Box Dimensions">
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px"}}>
+                  {[["L(mm)","L",box.L],["W(mm)","W",box.W],["H(mm)","H",box.H],["GW(kg)","wt",box.wt]].map(([lbl,k,v])=>(
+                    <div key={k}>
+                      <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>{lbl}</div>
+                      <input type="number" value={v} step={k==="wt"?0.01:1} onChange={setBoxF(k)} style={INP}/>
+                    </div>
+                  ))}
+                </div>
+              </FG>
+              <FG label="Loading Pattern">
+                {patterns.map(p=>{
+                  const isBest=p.r.total===Math.max(...patterns.map(x=>x.r.total));
+                  const sel=pid===p.id;
+                  return<div key={p.id} onClick={()=>setPid(p.id)}
+                    onMouseEnter={()=>setHov(p.id)} onMouseLeave={()=>setHov(null)}
+                    style={{padding:"8px 10px",marginBottom:"3px",borderRadius:"5px",cursor:"pointer",
+                      background:sel?"#052e16":hov===p.id?"#0f172a":"#0a0f18",
+                      border:"1px solid "+(sel?"#16a34a":hov===p.id?"#1e3a5f":"#111827"),
+                      display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontSize:"11px",fontWeight:600,color:sel?"#4ade80":"#cbd5e1",display:"flex",gap:"4px",alignItems:"center"}}>
+                        {p.name}
+                        {p.tag&&<span style={{fontSize:"8px",background:"#166534",color:"#86efac",padding:"1px 4px",borderRadius:"3px"}}>{p.tag}</span>}
+                        {isBest&&!p.tag&&<span style={{fontSize:"8px",background:"#1e3a5f",color:"#7dd3fc",padding:"1px 4px",borderRadius:"3px"}}>max</span>}
+                      </div>
+                      <div style={{fontSize:"9px",color:"#334155",marginTop:"1px"}}>{p.flat?"flat":"upright"} · {p.r.perLayer}/layer × {p.r.layers} layers</div>
+                    </div>
+                    <div style={{fontSize:"14px",fontWeight:800,color:sel?"#4ade80":isBest?"#7dd3fc":"#475569",marginLeft:"6px",fontVariantNumeric:"tabular-nums"}}>
+                      {fmt(p.r.total)}
+                    </div>
+                  </div>;
+                })}
+              </FG>
+            </>}
+
+            {/* ── PALLET ── */}
+            {mode==="pallet"&&<>
+              <FG label="Product SKU">
+                <select value={palSkuId} onChange={e=>handlePalSku(e.target.value)} style={{...SEL,color:"#4ade80",fontWeight:600}}>
+                  {SKUS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <SkuChip sku={curPalSku}/>
+              </FG>
+              <FG label="Box Dims">
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px"}}>
+                  {[["L(mm)","L",palBox.L],["W(mm)","W",palBox.W],["H(mm)","H",palBox.H],["GW(kg)","wt",palBox.wt]].map(([lbl,k,v])=>(
+                    <div key={k}>
+                      <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>{lbl}</div>
+                      <input type="number" value={v} step={k==="wt"?0.01:1} onChange={setPalBoxF(k)} style={INP}/>
+                    </div>
+                  ))}
+                </div>
+              </FG>
+              <FG label="Pallet Type">
+                <select value={palKey} onChange={e=>handlePalType(e.target.value)} style={SEL}>
+                  {Object.keys(PALLETS).map(k=><option key={k}>{k}</option>)}
+                </select>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px",marginTop:"7px"}}>
+                  {[["L(mm)","l",palDims.l],["W(mm)","w",palDims.w],["H(mm)","h",palDims.h]].map(([lbl,k,v])=>(
+                    <div key={k}>
+                      <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>{lbl}</div>
+                      <input type="number" value={v} onChange={e=>{setPalKey("Custom");setPalDims(d=>({...d,[k]:+e.target.value||0}));}} style={INP}/>
+                    </div>
+                  ))}
+                </div>
+              </FG>
+              {/* Pallet breakdown */}
+              <div style={{background:"#0a0f18",border:"1px solid #111827",borderRadius:"6px",padding:"10px",marginBottom:"14px"}}>
+                <div style={{fontSize:"9px",color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"8px"}}>Pallet Breakdown</div>
+                {[
+                  ["Grid ในตู้",palRes.palletsL+" × "+palRes.palletsW+" = "+palRes.totalPallets+" pallets"],
+                  ["กล่อง/ชั้น บน pallet",palRes.boxesPerLayer],
+                  ["ชั้น บน pallet",palRes.boxLayersH],
+                  ["กล่อง / pallet",palRes.boxesPerPallet],
+                  ["Total boxes",fmt(palRes.totalBoxes)],
+                ].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:"4px",fontSize:"11px"}}>
+                  <span style={{color:"#475569"}}>{k}</span>
+                  <span style={{color:"#94a3b8",fontWeight:600,fontVariantNumeric:"tabular-nums"}}>{v}</span>
+                </div>)}
+              </div>
+            </>}
+
+            {/* ── MIX LOAD ── */}
+            {mode==="mix"&&<>
+              <FG label={"Mix Items ("+mixItems.length+"/4)"}
+                action={<div style={{display:"flex",gap:"4px"}}>
+                  <button onClick={autoBalance} style={{background:"#0a0f18",border:"1px solid #1e3a5f",borderRadius:"5px",color:"#7dd3fc",padding:"4px 8px",fontSize:"10px",cursor:"pointer"}}>⚖ Auto</button>
+                  <button onClick={addMix} disabled={mixItems.length>=4}
+                    style={{background:"#0a0f18",border:"1px solid #1e3a5f",borderRadius:"5px",color:mixItems.length>=4?"#334155":"#7dd3fc",padding:"4px 8px",fontSize:"10px",cursor:mixItems.length>=4?"not-allowed":"pointer"}}>+ Add</button>
+                </div>}>
+
+                {/* Allocation bar */}
+                <div style={{marginBottom:"10px"}}>
+                  <div style={{height:"6px",background:"#111827",borderRadius:"3px",overflow:"hidden",display:"flex"}}>
+                    {mixItems.map((it,i)=><div key={i} style={{width:((it.allocLen/C.l)*100)+"%",background:ICSS[i],transition:"width 0.2s",minWidth:it.allocLen>0?"2px":"0"}}/>)}
+                  </div>
+                  <div style={{fontSize:"9px",color:"#334155",marginTop:"3px",display:"flex",justifyContent:"space-between"}}>
+                    <span>Used: {fmt(mixUsed)}mm</span>
+                    <span style={{color:mixUsed>C.l?"#f87171":"#4ade80"}}>Remain: {fmt(Math.max(0,C.l-mixUsed))}mm</span>
+                  </div>
+                </div>
+
+                {mixItems.map((item,idx)=>(
+                  <div key={idx} style={{background:"#0a0f18",border:"1px solid "+ICSS[idx]+"44",borderRadius:"6px",padding:"10px",marginBottom:"8px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"7px"}}>
+                      <div style={{width:"10px",height:"10px",borderRadius:"2px",background:ICSS[idx],flexShrink:0}}/>
+                      <span style={{fontSize:"10px",fontWeight:700,color:ICSS[idx]}}>Item {idx+1}</span>
+                      <div style={{flex:1}}/>
+                      {mixItems.length>1&&<button onClick={()=>delMix(idx)}
+                        style={{background:"transparent",border:"1px solid #7f1d1d",borderRadius:"4px",color:"#ef4444",padding:"2px 7px",fontSize:"10px",cursor:"pointer"}}>×</button>}
+                    </div>
+                    <select value={item.skuId} onChange={e=>setMixSku(idx,e.target.value)}
+                      style={{...SEL,color:ICSS[idx],fontWeight:600,marginBottom:"7px",fontSize:"11px"}}>
+                      {SKUS.filter(s=>s.id!=="manual").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:"7px",alignItems:"flex-end"}}>
+                      <div>
+                        <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>Length (mm)</div>
+                        <input type="number" value={item.allocLen} onChange={e=>setMixAlloc(idx,e.target.value)} style={INP}/>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:"9px",color:"#475569",textTransform:"uppercase",marginBottom:"2px"}}>Boxes</div>
+                        <div style={{fontSize:"18px",fontWeight:800,color:ICSS[idx],fontVariantNumeric:"tabular-nums",lineHeight:1}}>{fmt(mixRes[idx]?mixRes[idx].total:0)}</div>
+                      </div>
+                    </div>
+                    {mixRes[idx]&&mixRes[idx].total>0&&(
+                      <div style={{fontSize:"9px",color:"#334155",marginTop:"5px"}}>
+                        {mixRes[idx].perLayer}/layer × {mixRes[idx].layers} layers
+                        {" · "}{fmtD(mixRes[idx].total*item.box.wt/1000,2)}t
+                        {" · Box: "+item.box.L+"×"+item.box.W+"×"+item.box.H}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </FG>
+            </>}
+          </div>
+
+          {/* ── RESULT CARD ── */}
+          <div style={{padding:"13px 15px",borderTop:"1px solid #111827",background:"#060a10"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:"10px"}}>
+              <div>
+                <div style={{fontSize:"9px",letterSpacing:"0.18em",color:"#0ea5e9",fontWeight:700,textTransform:"uppercase"}}>Total Packages</div>
+                <div style={{fontSize:"42px",fontWeight:900,color:"#fff",lineHeight:1,letterSpacing:"-0.03em",fontVariantNumeric:"tabular-nums"}}>{fmt(summ.boxes)}</div>
+              </div>
+              <div style={{textAlign:"right",paddingBottom:"2px"}}>
+                <div style={{fontSize:"20px",fontWeight:800,lineHeight:1,fontVariantNumeric:"tabular-nums",
+                  color:wtOk?"#4ade80":"#f87171"}}>{fmtD(summ.wt/1000,2)}t</div>
+                <div style={{fontSize:"8px",color:"#334155",textTransform:"uppercase",marginTop:"2px"}}>gross weight</div>
+              </div>
+            </div>
+
+            {mode==="mix"&&(
+              <div style={{marginBottom:"8px"}}>
+                {mixItems.map((it,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:"10px",marginBottom:"3px",alignItems:"center"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"5px"}}>
+                      <div style={{width:"7px",height:"7px",borderRadius:"1px",background:ICSS[i],flexShrink:0}}/>
+                      <span style={{color:"#64748b",fontSize:"9px"}}>{(SKUS.find(s=>s.id===it.skuId)||{name:"Item "+(i+1)}).name.substring(0,20)}</span>
+                    </div>
+                    <span style={{color:ICSS[i],fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmt(mixRes[i]?mixRes[i].total:0)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mode==="pallet"&&(
+              <div style={{fontSize:"10px",color:"#475569",marginBottom:"8px"}}>
+                {palRes.totalPallets} pallets × {palRes.boxesPerPallet} boxes
+              </div>
+            )}
+
+            <div style={{fontSize:"10px",color:"#334155",marginBottom:"4px",display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontVariantNumeric:"tabular-nums"}}>{fmt(summ.wt)} kg</span>
+              <span>max {fmt(C.maxPay)} kg</span>
+            </div>
+            <div style={{height:"3px",background:"#111827",borderRadius:"2px",overflow:"hidden",marginBottom:"6px"}}>
+              <div style={{height:"100%",width:Math.min(summ.wt/C.maxPay*100,100)+"%",background:wtOk?"#22c55e":"#ef4444",transition:"width 0.3s"}}/>
+            </div>
+            {!wtOk&&<div style={{padding:"6px 9px",background:"#2a0d0d",border:"1px solid #7f1d1d",borderRadius:"5px",fontSize:"10px",color:"#fca5a5"}}>
+              ⚠️ น้ำหนักรวม {fmt(summ.wt)} kg เกิน payload {fmt(C.maxPay)} kg
+            </div>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3D VIEWPORT ── */}
+      <div ref={mountRef} style={{flex:1,position:"relative",overflow:"hidden",background:"#080c12"}}>
+        <button onClick={()=>setSide(s=>!s)} style={{
+          position:"absolute",top:10,left:10,zIndex:20,
+          background:"rgba(8,12,18,0.9)",border:"1px solid #1e3a5f",borderRadius:"6px",
+          color:"#4ade80",fontSize:"14px",width:"32px",height:"32px",cursor:"pointer",
+          display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {sideOpen?"◀":"▶"}
+        </button>
+        <div style={{position:"absolute",top:10,left:"50px",zIndex:10,
+          background:"rgba(8,12,18,0.85)",borderRadius:"7px",padding:"7px 12px",
+          fontSize:"11px",color:"#94a3b8",pointerEvents:"none",
+          border:"1px solid #111827",whiteSpace:"nowrap",overflow:"hidden",maxWidth:"calc(100% - 70px)"}}>
+          <span style={{color:"#4ade80",fontWeight:700}}>
+            {mode==="single"?actPat.name:mode==="pallet"?"Pallet Load":"Mix Load ("+mixItems.length+" items)"}
+          </span>
+          <span style={{color:"#1e3a5f",margin:"0 6px"}}>·</span>
+          <span style={{fontVariantNumeric:"tabular-nums"}}>{fmt(summ.boxes)} boxes</span>
+          <span style={{color:"#1e3a5f",margin:"0 6px"}}>·</span>
+          <span style={{color:wtOk?"#94a3b8":"#f87171",fontVariantNumeric:"tabular-nums"}}>{fmtD(summ.wt/1000,2)}t</span>
+        </div>
+        {mode==="mix"&&(
+          <div style={{position:"absolute",top:50,left:"50px",zIndex:10,
+            background:"rgba(8,12,18,0.85)",borderRadius:"6px",padding:"7px 10px",
+            fontSize:"10px",pointerEvents:"none",border:"1px solid #111827"}}>
+            {mixItems.map((it,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:i<mixItems.length-1?"3px":"0"}}>
+                <div style={{width:"8px",height:"8px",borderRadius:"2px",background:ICSS[i]}}/>
+                <span style={{color:"#64748b"}}>{(SKUS.find(s=>s.id===it.skuId)||{name:"?"}).name}</span>
+                <span style={{color:ICSS[i],fontWeight:700,marginLeft:"4px",fontVariantNumeric:"tabular-nums"}}>{fmt(mixRes[i]?mixRes[i].total:0)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {mode==="pallet"&&palRes.totalPallets>0&&(
+          <div style={{position:"absolute",top:50,left:"50px",zIndex:10,
+            background:"rgba(8,12,18,0.85)",borderRadius:"6px",padding:"7px 10px",
+            fontSize:"10px",pointerEvents:"none",border:"1px solid #111827",color:"#94a3b8"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"3px"}}>
+              <div style={{width:"8px",height:"8px",borderRadius:"2px",background:"#d97706"}}/>
+              <span>{palRes.totalPallets} pallets ({palRes.palletsL}×{palRes.palletsW})</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+              <div style={{width:"8px",height:"8px",borderRadius:"2px",background:"#22c55e"}}/>
+              <span>{fmt(palRes.totalBoxes)} boxes ({palRes.boxesPerPallet}/pallet)</span>
+            </div>
+          </div>
+        )}
+        <div style={{position:"absolute",bottom:10,right:12,zIndex:10,fontSize:"10px",color:"#1e3a5f",pointerEvents:"none"}}>
+          drag to rotate · scroll to zoom
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
