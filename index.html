@@ -7,6 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // Pre-compiled from JSX — no Babel required
 const {
@@ -2760,8 +2762,8 @@ function App() {
       border: "none",
       borderRadius: "6px",
       cursor: pdfLoading || summ.boxes === 0 ? "not-allowed" : "pointer",
-      background: pdfLoading ? "#1a2433" : summ.boxes === 0 ? "#e8edf2" : "#1e3a2f",
-      color: pdfLoading ? "#9ca3af" : summ.boxes === 0 ? "#d1d5db" : "#16a34a",
+      background: pdfLoading ? "#f1f5f9" : summ.boxes === 0 ? "#e8edf2" : "#2563eb",
+      color: pdfLoading ? "#9ca3af" : summ.boxes === 0 ? "#d1d5db" : "#ffffff",
       fontSize: "12px",
       fontWeight: 700,
       letterSpacing: "0.05em",
@@ -2776,7 +2778,7 @@ function App() {
       display: "inline-block",
       animation: "spin 1s linear infinite"
     }
-  }, "⏳"), "Generating PDF...") : /*#__PURE__*/React.createElement(React.Fragment, null, "📄 Download PDF Report")), /*#__PURE__*/React.createElement("style", null, `@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`), !wtOk && /*#__PURE__*/React.createElement("div", {
+  }, "⏳"), "Generating PDF...") : /*#__PURE__*/React.createElement(React.Fragment, null, "📄 Download PDF Report")), /*#__PURE__*/React.createElement("style", null, "@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}"), !wtOk && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "6px 9px",
       background: "#fef2f2",
