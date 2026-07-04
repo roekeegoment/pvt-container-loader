@@ -629,182 +629,123 @@ function calcMixLoad(C, items) {
   return results;
 }
 
-/* ── THREE.JS ────────────────────────────────────────────────────────────── */
-function buildScene(el, C) {
-  const W = el.clientWidth || 800,
-    H = el.clientHeight || 500;
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1e293b);
-  const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({
-    antialias: true
-  });
-  renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  el.appendChild(renderer.domElement);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const sun = new THREE.DirectionalLight(0xfffde7, 1.0);
-  sun.position.set(10, 15, 8);
-  scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x4dd0e1, 0.3);
-  fill.position.set(-8, 5, -6);
-  scene.add(fill);
-  const S = 100,
-    cL = C.l / S,
-    cH = C.h / S,
-    cW = C.w / S;
-  const cGeo = new THREE.BoxGeometry(cL, cH, cW);
-  const wall = new THREE.Mesh(cGeo, new THREE.MeshPhongMaterial({
-    color: 0x0d2137,
-    transparent: true,
-    opacity: 0.1,
-    side: THREE.BackSide
-  }));
-  wall.position.set(cL / 2, cH / 2, cW / 2);
-  scene.add(wall);
-  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(cGeo), new THREE.LineBasicMaterial({
-    color: 0x60a5fa,
-    transparent: true,
-    opacity: 0.65
-  }));
-  edges.position.set(cL / 2, cH / 2, cW / 2);
-  scene.add(edges);
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(cL, 0.04, cW), new THREE.MeshPhongMaterial({
-    color: 0xb45309
-  }));
-  floor.position.set(cL / 2, 0.02, cW / 2);
-  scene.add(floor);
+/* ── PALLET LOAD SPECS (warehouse mode) ─────────────────────────────────── */
+const PAL_SPECS = {
+  "EUR/EPAL (1200×800)": {
+    l: 1200,
+    w: 800,
+    h: 145,
+    tare: 23,
+    staticKg: 4000,
+    dynKg: 1500,
+    rackKg: 1000
+  },
+  "US/GMA (1219×1016)": {
+    l: 1219,
+    w: 1016,
+    h: 145,
+    tare: 27,
+    staticKg: 3628,
+    dynKg: 1360,
+    rackKg: 900
+  },
+  "Thai Std (1100×1100)": {
+    l: 1100,
+    w: 1100,
+    h: 150,
+    tare: 20,
+    staticKg: 2000,
+    dynKg: 1000,
+    rackKg: 600
+  },
+  "Custom": {
+    l: 1200,
+    w: 1000,
+    h: 145,
+    tare: 25,
+    staticKg: 2000,
+    dynKg: 1000,
+    rackKg: 600
+  }
+};
+const HANDLE_FACTORS = {
+  "1-2 ครั้ง": 1.00,
+  "3-4 ครั้ง": 0.80,
+  "5+ ครั้ง": 0.65
+};
+function calcWhPallet(box, pal, s) {
+  const {
+      L: bl,
+      W: bw,
+      H: bh,
+      wt: wt
+    } = box,
+    {
+      l: pl,
+      w: pw,
+      h: ph,
+      tare,
+      dynKg
+    } = pal;
+  const o1 = {
+    bL: bl,
+    bW: bw,
+    nL: Math.floor(pl / bl),
+    nW: Math.floor(pw / bw)
+  };
+  const o2 = {
+    bL: bw,
+    bW: bl,
+    nL: Math.floor(pl / bw),
+    nW: Math.floor(pw / bl)
+  };
+  const ori = o1.nL * o1.nW >= o2.nL * o2.nW ? o1 : o2;
+  const bpl = ori.nL * ori.nW,
+    ovL = pl - ori.nL * ori.bL,
+    ovW = pw - ori.nW * ori.bW;
+  const hf = HANDLE_FACTORS[s.handleFreq] || 0.80;
+  const effDyn = dynKg * hf,
+    cap = effDyn - tare;
+  const mW = bpl > 0 && wt > 0 ? Math.max(0, Math.floor(cap / (bpl * wt))) : 0;
+  const mH = bh > 0 ? Math.max(0, Math.floor((s.maxHeight - ph - 200) / bh)) : 0;
+  let mC = 9999,
+    cNote = "";
+  if (s.bct && +s.bct > 0) {
+    const es = +s.bct / s.compSF;
+    mC = Math.max(1, Math.floor(es / wt) + 1);
+    cNote = "BCT " + s.bct + "kg÷SF" + s.compSF + "=" + es.toFixed(0) + "kg";
+  }
+  const manLim = s.manualLayers && +s.manualLayers > 0 ? +s.manualLayers : 9999;
+  const rec = Math.min(mW, mH, mC, manLim);
+  const lim = rec === mW ? "⚖ Weight" : rec === mH ? "📏 Height" : rec === mC ? "📦 Compression" : "✏ Manual";
+  const stkH = ph + rec * bh;
+  const totWt = tare + bpl * rec * wt;
+  const fp = pl / 1000 * (pw / 1000);
+  const fkgm2 = totWt / fp;
   return {
-    scene,
-    camera,
-    renderer,
-    S,
-    cL,
-    cH,
-    cW
+    ori,
+    bpl,
+    ovL,
+    ovW,
+    hf,
+    effDyn,
+    cap,
+    mW,
+    mH,
+    mC,
+    manLim,
+    rec,
+    lim,
+    stkH,
+    totWt,
+    fkgm2,
+    wtUtil: totWt / effDyn,
+    cNote,
+    floorOK: fkgm2 <= s.floorLoad,
+    htOK: stkH <= s.maxHeight - 200,
+    wtOK: totWt <= effDyn
   };
 }
-function addIM(scene, S, pos, color, gap = 1.8) {
-  if (!pos || !pos.length) return;
-  const N = Math.min(pos.length, 20000);
-  const geo = new THREE.BoxGeometry(1, 1, 1);
-  const ec = new THREE.Color(color);
-  ec.r *= 0.15;
-  ec.g *= 0.15;
-  ec.b *= 0.15;
-  const mat = new THREE.MeshPhongMaterial({
-    color,
-    emissive: ec,
-    shininess: 20
-  });
-  const mesh = new THREE.InstancedMesh(geo, mat, N);
-  mesh.userData.dyn = true;
-  const dummy = new THREE.Object3D();
-  for (let i = 0; i < N; i++) {
-    const p = pos[i];
-    dummy.position.set((p.x + p.sx / 2) / S, (p.y + p.sy / 2) / S, (p.z + p.sz / 2) / S);
-    dummy.scale.set((p.sx - gap) / S, (p.sy - gap) / S, (p.sz - gap) / S);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-  }
-  mesh.instanceMatrix.needsUpdate = true;
-  scene.add(mesh);
-}
-function clearDyn(scene) {
-  scene.children.filter(c => c.userData.dyn).forEach(c => {
-    scene.remove(c);
-    c.geometry && c.geometry.dispose();
-    c.material && c.material.dispose();
-  });
-}
-
-/* ── STYLES ──────────────────────────────────────────────────────────────── */
-const fmt = n => Math.round(n).toLocaleString();
-const fmtD = (n, d = 1) => n.toFixed(d);
-const gwAvg = s => s.gwMin != null ? +((s.gwMin + s.gwMax) / 2).toFixed(3) : 6.0;
-const SEL = {
-  width: "100%",
-  background: "#ffffff",
-  border: "1px solid #e8edf2",
-  borderRadius: "5px",
-  color: "#1e293b",
-  padding: "7px 10px",
-  fontSize: "12px",
-  cursor: "pointer"
-};
-const INP = {
-  width: "100%",
-  background: "#ffffff",
-  border: "1px solid #e8edf2",
-  borderRadius: "5px",
-  color: "#1e293b",
-  padding: "6px 8px",
-  fontSize: "13px",
-  boxSizing: "border-box",
-  fontVariantNumeric: "tabular-nums"
-};
-function FG({
-  label,
-  children,
-  action
-}) {
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: "14px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "7px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: "9px",
-      color: "#2563eb",
-      textTransform: "uppercase",
-      letterSpacing: "0.18em",
-      fontWeight: 700
-    }
-  }, label), action), children);
-}
-function SkuChip({
-  sku
-}) {
-  if (!sku || sku.id === "manual") return null;
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: "5px",
-      background: "#ffffff",
-      border: "1px solid #e8edf2",
-      borderRadius: "5px",
-      padding: "6px 9px"
-    }
-  }, [["Can", sku.can], ["W×L×H", sku.w + "×" + sku.l + "×" + sku.h + "mm"], ["GW", sku.gwMin != null ? sku.gwMin === sku.gwMax ? sku.gwMin + "kg" : sku.gwMin + "–" + sku.gwMax + "kg" : "N/A"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
-    key: k,
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      marginBottom: "2px",
-      fontSize: "10px"
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: "#d1d5db"
-    }
-  }, k), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: k === "GW" ? "#fbbf24" : "#6b7280",
-      fontWeight: k === "GW" ? 700 : 400
-    }
-  }, v))));
-}
-
-/* ── MAIN APP ────────────────────────────────────────────────────────────── */
-
-/* ── WAREHOUSE COMPONENTS ──────────────────────────────── */
-
 function PalletTopSVG({
   pl,
   pw,
@@ -850,8 +791,6 @@ function PalletTopSVG({
     fill: "#9ca3af"
   }, pl, "mm"));
 }
-
-
 function PalletElevSVG({
   ph,
   pw,
@@ -938,8 +877,6 @@ function PalletElevSVG({
     transform: "rotate(-90,4," + (bot + topY) / 2 + ")"
   }, ph + nL * bH, "mm"));
 }
-
-
 function WarehousePanel({
   wr,
   box,
@@ -1314,7 +1251,179 @@ function WarehousePanel({
   }, "📌 Static rating (", (effDyn / wr.hf).toFixed(0), "kg) ลดเหลือ ", effDyn.toFixed(0), "kg สำหรับ Dynamic load (", settings.handleFreq, ") — ลด ", Math.round((1 - wr.hf) * 100), "% เพราะ repetitive handling ทำให้ pallet เสียหายได้")));
 }
 
+/* ── THREE.JS ────────────────────────────────────────────────────────────── */
+function buildScene(el, C) {
+  const W = el.clientWidth || 800,
+    H = el.clientHeight || 500;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1e293b);
+  const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  el.appendChild(renderer.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xfffde7, 1.0);
+  sun.position.set(10, 15, 8);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x4dd0e1, 0.3);
+  fill.position.set(-8, 5, -6);
+  scene.add(fill);
+  const S = 100,
+    cL = C.l / S,
+    cH = C.h / S,
+    cW = C.w / S;
+  const cGeo = new THREE.BoxGeometry(cL, cH, cW);
+  const wall = new THREE.Mesh(cGeo, new THREE.MeshPhongMaterial({
+    color: 0x0d2137,
+    transparent: true,
+    opacity: 0.1,
+    side: THREE.BackSide
+  }));
+  wall.position.set(cL / 2, cH / 2, cW / 2);
+  scene.add(wall);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(cGeo), new THREE.LineBasicMaterial({
+    color: 0x60a5fa,
+    transparent: true,
+    opacity: 0.65
+  }));
+  edges.position.set(cL / 2, cH / 2, cW / 2);
+  scene.add(edges);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(cL, 0.04, cW), new THREE.MeshPhongMaterial({
+    color: 0xb45309
+  }));
+  floor.position.set(cL / 2, 0.02, cW / 2);
+  scene.add(floor);
+  return {
+    scene,
+    camera,
+    renderer,
+    S,
+    cL,
+    cH,
+    cW
+  };
+}
+function addIM(scene, S, pos, color, gap = 1.8) {
+  if (!pos || !pos.length) return;
+  const N = Math.min(pos.length, 20000);
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const ec = new THREE.Color(color);
+  ec.r *= 0.15;
+  ec.g *= 0.15;
+  ec.b *= 0.15;
+  const mat = new THREE.MeshPhongMaterial({
+    color,
+    emissive: ec,
+    shininess: 20
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, N);
+  mesh.userData.dyn = true;
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < N; i++) {
+    const p = pos[i];
+    dummy.position.set((p.x + p.sx / 2) / S, (p.y + p.sy / 2) / S, (p.z + p.sz / 2) / S);
+    dummy.scale.set((p.sx - gap) / S, (p.sy - gap) / S, (p.sz - gap) / S);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
+}
+function clearDyn(scene) {
+  scene.children.filter(c => c.userData.dyn).forEach(c => {
+    scene.remove(c);
+    c.geometry && c.geometry.dispose();
+    c.material && c.material.dispose();
+  });
+}
 
+/* ── STYLES ──────────────────────────────────────────────────────────────── */
+const fmt = n => Math.round(n).toLocaleString();
+const fmtD = (n, d = 1) => n.toFixed(d);
+const gwAvg = s => s.gwMin != null ? +((s.gwMin + s.gwMax) / 2).toFixed(3) : 6.0;
+const SEL = {
+  width: "100%",
+  background: "#ffffff",
+  border: "1px solid #e8edf2",
+  borderRadius: "5px",
+  color: "#1e293b",
+  padding: "7px 10px",
+  fontSize: "12px",
+  cursor: "pointer"
+};
+const INP = {
+  width: "100%",
+  background: "#ffffff",
+  border: "1px solid #e8edf2",
+  borderRadius: "5px",
+  color: "#1e293b",
+  padding: "6px 8px",
+  fontSize: "13px",
+  boxSizing: "border-box",
+  fontVariantNumeric: "tabular-nums"
+};
+function FG({
+  label,
+  children,
+  action
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "7px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#2563eb",
+      textTransform: "uppercase",
+      letterSpacing: "0.18em",
+      fontWeight: 700
+    }
+  }, label), action), children);
+}
+function SkuChip({
+  sku
+}) {
+  if (!sku || sku.id === "manual") return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: "5px",
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "5px",
+      padding: "6px 9px"
+    }
+  }, [["Can", sku.can], ["W×L×H", sku.w + "×" + sku.l + "×" + sku.h + "mm"], ["GW", sku.gwMin != null ? sku.gwMin === sku.gwMax ? sku.gwMin + "kg" : sku.gwMin + "–" + sku.gwMax + "kg" : "N/A"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "2px",
+      fontSize: "10px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#d1d5db"
+    }
+  }, k), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: k === "GW" ? "#fbbf24" : "#6b7280",
+      fontWeight: k === "GW" ? 700 : 400
+    }
+  }, v))));
+}
+
+/* ── MAIN APP ────────────────────────────────────────────────────────────── */
 function App() {
   const [mode, setMode] = useState("single");
   const [cKey, setCKey] = useState("20ft Standard");
@@ -1446,7 +1555,6 @@ function App() {
   const curPalSku = SKUS.find(s => s.id === palSkuId);
 
   /* PDF generation */
-
   const handleWhSku = id => {
     setWhSkuId(id);
     const s = SKUS.find(x => x.id === id);
@@ -2405,17 +2513,9 @@ function App() {
       background: wtOk ? "#15803d" : "#dc2626",
       transition: "width 0.3s"
     }
-  })), !wtOk && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: "6px 9px",
-      background: "#fef2f2",
-      border: "1px solid #fecaca",
-      borderRadius: "5px",
-      fontSize: "10px",
-      color: "#dc2626",
-      marginTop: "8px"
-    }
-  }, "⚠️ น้ำหนักรวม ", fmt(summ.wt), " kg เกิน payload ", fmt(C.maxPay), " kg")))), mode === "warehouse" && /*#__PURE__*/React.createElement(WarehousePanel, {
+  })
+)),
+    mode === "warehouse" && /*#__PURE__*/React.createElement(WarehousePanel, {
     wr: whRes,
     box: whBox,
     pal: whPal,
@@ -2581,7 +2681,8 @@ function App() {
       color: "#e0f2fe",
       pointerEvents: "none"
     }
-  }, "drag to rotate · scroll to zoom")));
+  }, "drag to rotate · scroll to zoom"))))
+);
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 
