@@ -7,8 +7,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body,#root{height:100%;overflow:hidden;}
+body{background:#f5f7fa;font-family:'Inter',system-ui,sans-serif;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:#f1f5f9;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+select,input{outline:none;}
+select option{background:#ffffff;color:#0f172a;}
+button{font-family:inherit;}
+</style>
+</head>
+<body>
+<div id="root"></div>
 <script>
-// Pre-compiled from JSX — no Babel required
 const {
   useState,
   useEffect,
@@ -787,8 +801,10 @@ function SkuChip({
   }, v))));
 }
 
+/* ── MAIN APP ────────────────────────────────────────────────────────────── */
 
-/* ── WAREHOUSE SVG DIAGRAMS ──────────────────────────────────────────────── */
+/* ── WAREHOUSE COMPONENTS ──────────────────────────────── */
+
 function PalletTopSVG({
   pl,
   pw,
@@ -834,6 +850,7 @@ function PalletTopSVG({
     fill: "#9ca3af"
   }, pl, "mm"));
 }
+
 
 function PalletElevSVG({
   ph,
@@ -921,6 +938,7 @@ function PalletElevSVG({
     transform: "rotate(-90,4," + (bot + topY) / 2 + ")"
   }, ph + nL * bH, "mm"));
 }
+
 
 function WarehousePanel({
   wr,
@@ -1296,7 +1314,7 @@ function WarehousePanel({
   }, "📌 Static rating (", (effDyn / wr.hf).toFixed(0), "kg) ลดเหลือ ", effDyn.toFixed(0), "kg สำหรับ Dynamic load (", settings.handleFreq, ") — ลด ", Math.round((1 - wr.hf) * 100), "% เพราะ repetitive handling ทำให้ pallet เสียหายได้")));
 }
 
-/* ── MAIN APP ────────────────────────────────────────────────────────────── */
+
 function App() {
   const [mode, setMode] = useState("single");
   const [cKey, setCKey] = useState("20ft Standard");
@@ -1428,6 +1446,7 @@ function App() {
   const curPalSku = SKUS.find(s => s.id === palSkuId);
 
   /* PDF generation */
+
   const handleWhSku = id => {
     setWhSkuId(id);
     const s = SKUS.find(x => x.id === id);
@@ -2386,27 +2405,16 @@ function App() {
       background: wtOk ? "#15803d" : "#dc2626",
       transition: "width 0.3s"
     }
-  })), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {},
-    disabled: summ.boxes === 0,
+  })), !wtOk && /*#__PURE__*/React.createElement("div", {
     style: {
-      width: "100%",
-      padding: "9px",
-      border: "none",
-      borderRadius: "6px",
-      cursor: summ.boxes === 0 ? "not-allowed" : "pointer",
-      background: summ.boxes === 0 ? "#e8edf2" : "#2563eb",
-      color: summ.boxes === 0 ? "#d1d5db" : "#ffffff",
-      fontSize: "12px",
-      fontWeight: 700,
-      letterSpacing: "0.05em",
-      border: "1px solid " + (summ.boxes === 0 ? "#e8edf2" : "#16a34a"),
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "6px"
+      padding: "6px 9px",
+      background: "#fef2f2",
+      border: "1px solid #fecaca",
+      borderRadius: "5px",
+      fontSize: "10px",
+      color: "#dc2626",
+      marginTop: "8px"
     }
-  }
   }, "⚠️ น้ำหนักรวม ", fmt(summ.wt), " kg เกิน payload ", fmt(C.maxPay), " kg")))), mode === "warehouse" && /*#__PURE__*/React.createElement(WarehousePanel, {
     wr: whRes,
     box: whBox,
