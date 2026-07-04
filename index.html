@@ -7,638 +7,2955 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body,#root{height:100%;overflow:hidden;}
-body{background:#080c12;font-family:'Inter',system-ui,sans-serif;}
-::-webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px;}
-select,input{outline:none;}
-select option{background:#0a0f18;}
-button{font-family:inherit;}
-</style>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel">
-const{useState,useEffect,useRef,useMemo}=React;
+<script>
+// Pre-compiled from JSX — no Babel required
+const {
+  useState,
+  useEffect,
+  useRef,
+  useMemo
+} = React;
 
 /* ── SKU CATALOG ─────────────────────────────────────────────────────────── */
-const SKUS=[
-  {id:"manual",name:"— กรอกเอง —",               can:"",          l:348,w:262,h:95, gwMin:6.22, gwMax:6.3  },
-  {id:"s12",  name:"12/15oz. SQ เตี้ย ★",        can:"12/425 SQ", l:348,w:262,h:95, gwMin:6.22, gwMax:6.3  },
-  {id:"s1",   name:"6/108 oz.",                   can:"6/3050",    l:469,w:313,h:183,gwMin:21.0, gwMax:21.12},
-  {id:"s2",   name:"24/30 oz.",                   can:"24/850",    l:410,w:306,h:243,gwMin:23.6, gwMax:23.6 },
-  {id:"s3",   name:"12/30 oz.",                   can:"12/850",    l:408,w:306,h:125,gwMin:12.0, gwMax:12.0 },
-  {id:"s4",   name:"6/30 oz.",                    can:"6/850",     l:306,w:204,h:125,gwMin:6.16, gwMax:6.16 },
-  {id:"s5",   name:"24/20 oz.",                   can:"24/565",    l:343,w:260,h:235,gwMin:16.0, gwMax:16.8 },
-  {id:"s6",   name:"12/20 oz. (ถาด)",             can:"12/565",    l:355,w:260,h:65, gwMin:8.0,  gwMax:8.0  },
-  {id:"s7",   name:"12/20 oz.",                   can:"12/565",    l:343,w:257,h:123,gwMin:8.02, gwMax:8.4  },
-  {id:"s8",   name:"24/15 oz. สูง",               can:"24/425สูง", l:305,w:225,h:230,gwMin:12.48,gwMax:12.60},
-  {id:"s9",   name:"12/15 oz. สูง",               can:"12/425สูง", l:305,w:225,h:117,gwMin:null, gwMax:null },
-  {id:"s10",  name:"24/15 oz. SQ เตี้ย",          can:"24/425 SQ", l:345,w:260,h:185,gwMin:12.7, gwMax:12.7 },
-  {id:"s11",  name:"24/15 oz. SQ มีฝาส้อม",       can:"24/425 SQ", l:358,w:270,h:190,gwMin:13.2, gwMax:13.2 },
-  {id:"s13",  name:"24/8 oz.",                    can:"24/227",    l:343,w:257,h:110,gwMin:7.4,  gwMax:7.4  },
-  {id:"s14",  name:"24/8 oz. มีฝาส้อม",           can:"24/227",    l:358,w:268,h:115,gwMin:7.5,  gwMax:7.5  },
-  {id:"s15",  name:"12/46 oz.",                   can:"12/1.36L",  l:435,w:327,h:183,gwMin:19.46,gwMax:19.46},
-  {id:"s16",  name:"24/20 oz. มีฝาส้อม",          can:"24/565",    l:358,w:270,h:242,gwMin:16.0, gwMax:16.8 },
-  {id:"s17",  name:"12/30 oz. ชิงค์ถุง",          can:"12/850",    l:414,w:312,h:131,gwMin:null, gwMax:null },
-  {id:"s18",  name:"24/30 oz. 5 ชั้น",            can:"24/850",    l:415,w:310,h:253,gwMin:24.2, gwMax:24.2 },
-  {id:"s19",  name:"3/108 oz.",                   can:"3/3050",    l:468,w:155,h:180,gwMin:10.5, gwMax:10.5 },
-  {id:"s20",  name:"6/108 oz. สีขาว",             can:"6/3050",    l:469,w:313,h:183,gwMin:21.0, gwMax:21.12},
-  {id:"s21",  name:"6/15 oz.",                    can:"6/425",     l:226,w:155,h:115,gwMin:3.08, gwMax:3.12 },
-  {id:"s22",  name:"6/20 oz.",                    can:"6/565",     l:260,w:175,h:121,gwMin:4.10, gwMax:4.20 },
-  {id:"s23",  name:"12/46 oz. สีขาว",             can:"12/1.36L",  l:435,w:327,h:183,gwMin:19.46,gwMax:19.46},
-  {id:"s24",  name:"6/108 oz. 5 ชั้น",            can:"6/3050",    l:475,w:318,h:190,gwMin:21.0, gwMax:21.0 },
-  {id:"s25",  name:"12/20 oz. สีขาว",             can:"12/565",    l:343,w:257,h:123,gwMin:8.02, gwMax:8.4  },
-  {id:"s26",  name:"24/20 oz. SHRINK FILM",        can:"24/565",    l:350,w:260,h:245,gwMin:16.0, gwMax:16.8 },
-  {id:"s27",  name:"24/30 oz. แข็งแรง",           can:"24/850",    l:410,w:306,h:243,gwMin:23.6, gwMax:23.6 },
-  {id:"s28",  name:"12/46 oz. แข็งแรง ตาล",       can:"12/1.36L",  l:435,w:327,h:183,gwMin:19.46,gwMax:19.46},
-  {id:"s29",  name:"12/30 oz. สีขาว",             can:"12/850",    l:408,w:306,h:125,gwMin:12.0, gwMax:12.0 },
-];
-
-const CONT={
-  "20ft Standard": {l:5898, w:2352,h:2393,maxPay:28000},
-  "40ft Standard": {l:12032,w:2352,h:2393,maxPay:26700},
-  "40ft High Cube":{l:12032,w:2352,h:2698,maxPay:26460},
+const SKUS = [{
+  id: "manual",
+  name: "— กรอกเอง —",
+  can: "",
+  l: 348,
+  w: 262,
+  h: 95,
+  gwMin: 6.22,
+  gwMax: 6.3
+}, {
+  id: "s12",
+  name: "12/15oz. SQ เตี้ย ★",
+  can: "12/425 SQ",
+  l: 348,
+  w: 262,
+  h: 95,
+  gwMin: 6.22,
+  gwMax: 6.3
+}, {
+  id: "s1",
+  name: "6/108 oz.",
+  can: "6/3050",
+  l: 469,
+  w: 313,
+  h: 183,
+  gwMin: 21.0,
+  gwMax: 21.12
+}, {
+  id: "s2",
+  name: "24/30 oz.",
+  can: "24/850",
+  l: 410,
+  w: 306,
+  h: 243,
+  gwMin: 23.6,
+  gwMax: 23.6
+}, {
+  id: "s3",
+  name: "12/30 oz.",
+  can: "12/850",
+  l: 408,
+  w: 306,
+  h: 125,
+  gwMin: 12.0,
+  gwMax: 12.0
+}, {
+  id: "s4",
+  name: "6/30 oz.",
+  can: "6/850",
+  l: 306,
+  w: 204,
+  h: 125,
+  gwMin: 6.16,
+  gwMax: 6.16
+}, {
+  id: "s5",
+  name: "24/20 oz.",
+  can: "24/565",
+  l: 343,
+  w: 260,
+  h: 235,
+  gwMin: 16.0,
+  gwMax: 16.8
+}, {
+  id: "s6",
+  name: "12/20 oz. (ถาด)",
+  can: "12/565",
+  l: 355,
+  w: 260,
+  h: 65,
+  gwMin: 8.0,
+  gwMax: 8.0
+}, {
+  id: "s7",
+  name: "12/20 oz.",
+  can: "12/565",
+  l: 343,
+  w: 257,
+  h: 123,
+  gwMin: 8.02,
+  gwMax: 8.4
+}, {
+  id: "s8",
+  name: "24/15 oz. สูง",
+  can: "24/425สูง",
+  l: 305,
+  w: 225,
+  h: 230,
+  gwMin: 12.48,
+  gwMax: 12.60
+}, {
+  id: "s9",
+  name: "12/15 oz. สูง",
+  can: "12/425สูง",
+  l: 305,
+  w: 225,
+  h: 117,
+  gwMin: null,
+  gwMax: null
+}, {
+  id: "s10",
+  name: "24/15 oz. SQ เตี้ย",
+  can: "24/425 SQ",
+  l: 345,
+  w: 260,
+  h: 185,
+  gwMin: 12.7,
+  gwMax: 12.7
+}, {
+  id: "s11",
+  name: "24/15 oz. SQ มีฝาส้อม",
+  can: "24/425 SQ",
+  l: 358,
+  w: 270,
+  h: 190,
+  gwMin: 13.2,
+  gwMax: 13.2
+}, {
+  id: "s13",
+  name: "24/8 oz.",
+  can: "24/227",
+  l: 343,
+  w: 257,
+  h: 110,
+  gwMin: 7.4,
+  gwMax: 7.4
+}, {
+  id: "s14",
+  name: "24/8 oz. มีฝาส้อม",
+  can: "24/227",
+  l: 358,
+  w: 268,
+  h: 115,
+  gwMin: 7.5,
+  gwMax: 7.5
+}, {
+  id: "s15",
+  name: "12/46 oz.",
+  can: "12/1.36L",
+  l: 435,
+  w: 327,
+  h: 183,
+  gwMin: 19.46,
+  gwMax: 19.46
+}, {
+  id: "s16",
+  name: "24/20 oz. มีฝาส้อม",
+  can: "24/565",
+  l: 358,
+  w: 270,
+  h: 242,
+  gwMin: 16.0,
+  gwMax: 16.8
+}, {
+  id: "s17",
+  name: "12/30 oz. ชิงค์ถุง",
+  can: "12/850",
+  l: 414,
+  w: 312,
+  h: 131,
+  gwMin: null,
+  gwMax: null
+}, {
+  id: "s18",
+  name: "24/30 oz. 5 ชั้น",
+  can: "24/850",
+  l: 415,
+  w: 310,
+  h: 253,
+  gwMin: 24.2,
+  gwMax: 24.2
+}, {
+  id: "s19",
+  name: "3/108 oz.",
+  can: "3/3050",
+  l: 468,
+  w: 155,
+  h: 180,
+  gwMin: 10.5,
+  gwMax: 10.5
+}, {
+  id: "s20",
+  name: "6/108 oz. สีขาว",
+  can: "6/3050",
+  l: 469,
+  w: 313,
+  h: 183,
+  gwMin: 21.0,
+  gwMax: 21.12
+}, {
+  id: "s21",
+  name: "6/15 oz.",
+  can: "6/425",
+  l: 226,
+  w: 155,
+  h: 115,
+  gwMin: 3.08,
+  gwMax: 3.12
+}, {
+  id: "s22",
+  name: "6/20 oz.",
+  can: "6/565",
+  l: 260,
+  w: 175,
+  h: 121,
+  gwMin: 4.10,
+  gwMax: 4.20
+}, {
+  id: "s23",
+  name: "12/46 oz. สีขาว",
+  can: "12/1.36L",
+  l: 435,
+  w: 327,
+  h: 183,
+  gwMin: 19.46,
+  gwMax: 19.46
+}, {
+  id: "s24",
+  name: "6/108 oz. 5 ชั้น",
+  can: "6/3050",
+  l: 475,
+  w: 318,
+  h: 190,
+  gwMin: 21.0,
+  gwMax: 21.0
+}, {
+  id: "s25",
+  name: "12/20 oz. สีขาว",
+  can: "12/565",
+  l: 343,
+  w: 257,
+  h: 123,
+  gwMin: 8.02,
+  gwMax: 8.4
+}, {
+  id: "s26",
+  name: "24/20 oz. SHRINK FILM",
+  can: "24/565",
+  l: 350,
+  w: 260,
+  h: 245,
+  gwMin: 16.0,
+  gwMax: 16.8
+}, {
+  id: "s27",
+  name: "24/30 oz. แข็งแรง",
+  can: "24/850",
+  l: 410,
+  w: 306,
+  h: 243,
+  gwMin: 23.6,
+  gwMax: 23.6
+}, {
+  id: "s28",
+  name: "12/46 oz. แข็งแรง ตาล",
+  can: "12/1.36L",
+  l: 435,
+  w: 327,
+  h: 183,
+  gwMin: 19.46,
+  gwMax: 19.46
+}, {
+  id: "s29",
+  name: "12/30 oz. สีขาว",
+  can: "12/850",
+  l: 408,
+  w: 306,
+  h: 125,
+  gwMin: 12.0,
+  gwMax: 12.0
+}];
+const CONT = {
+  "20ft Standard": {
+    l: 5898,
+    w: 2352,
+    h: 2393,
+    maxPay: 28000
+  },
+  "40ft Standard": {
+    l: 12032,
+    w: 2352,
+    h: 2393,
+    maxPay: 26700
+  },
+  "40ft High Cube": {
+    l: 12032,
+    w: 2352,
+    h: 2698,
+    maxPay: 26460
+  }
 };
-
-const PALLETS={
-  "EUR/EPAL (1200×800)": {l:1200,w:800, h:145},
-  "US/GMA (1219×1016)":  {l:1219,w:1016,h:145},
-  "Thai Std (1100×1100)":{l:1100,w:1100,h:150},
-  "Custom":              {l:1200,w:1000,h:145},
+const PALLETS = {
+  "EUR/EPAL (1200×800)": {
+    l: 1200,
+    w: 800,
+    h: 145
+  },
+  "US/GMA (1219×1016)": {
+    l: 1219,
+    w: 1016,
+    h: 145
+  },
+  "Thai Std (1100×1100)": {
+    l: 1100,
+    w: 1100,
+    h: 150
+  },
+  "Custom": {
+    l: 1200,
+    w: 1000,
+    h: 145
+  }
 };
+const ICOLS = [0x22c55e, 0x3b82f6, 0xf97316, 0xa855f7];
+const ICSS = ["#15803d", "#3b82f6", "#f97316", "#a855f7"];
 
-const ICOLS=[0x22c55e,0x3b82f6,0xf97316,0xa855f7];
-const ICSS=["#22c55e","#3b82f6","#f97316","#a855f7"];
-
-/* ── CALC: SINGLE ────────────────────────────────────────────────────────── */
-function calcUniform(C,bl,bw,bh){
-  const nl=Math.floor(C.l/bl),nw=Math.floor(C.w/bw),nh=Math.floor(C.h/bh);
-  const pos=[];
-  for(let li=0;li<nl;li++)for(let wi=0;wi<nw;wi++)for(let hi=0;hi<nh;hi++)
-    pos.push({x:li*bl,y:hi*bh,z:wi*bw,sx:bl,sy:bh,sz:bw});
-  return{pos,total:nl*nw*nh,perLayer:nl*nw,layers:nh,wUsed:nw*bw};
+/* ── CALC ────────────────────────────────────────────────────────────────── */
+function calcUniform(C, bl, bw, bh) {
+  const nl = Math.floor(C.l / bl),
+    nw = Math.floor(C.w / bw),
+    nh = Math.floor(C.h / bh);
+  const pos = [];
+  for (let li = 0; li < nl; li++) for (let wi = 0; wi < nw; wi++) for (let hi = 0; hi < nh; hi++) pos.push({
+    x: li * bl,
+    y: hi * bh,
+    z: wi * bw,
+    sx: bl,
+    sy: bh,
+    sz: bw
+  });
+  return {
+    pos,
+    total: nl * nw * nh,
+    perLayer: nl * nw,
+    layers: nh,
+    wUsed: nw * bw
+  };
 }
-function calcMixed(C,groups,bh){
-  const nh=Math.floor(C.h/bh),pos=[];
-  let z=0,perLayer=0;
-  for(const{n,bw,bl}of groups){
-    const nl=Math.floor(C.l/bl);
-    for(let r=0;r<n&&z+bw<=C.w+8;r++){
-      perLayer+=nl;
-      for(let li=0;li<nl;li++)for(let hi=0;hi<nh;hi++)
-        pos.push({x:li*bl,y:hi*bh,z,sx:bl,sy:bh,sz:bw});
-      z+=bw;
+function calcMixed(C, groups, bh) {
+  const nh = Math.floor(C.h / bh),
+    pos = [];
+  let z = 0,
+    perLayer = 0;
+  for (const {
+    n,
+    bw,
+    bl
+  } of groups) {
+    const nl = Math.floor(C.l / bl);
+    for (let r = 0; r < n && z + bw <= C.w + 8; r++) {
+      perLayer += nl;
+      for (let li = 0; li < nl; li++) for (let hi = 0; hi < nh; hi++) pos.push({
+        x: li * bl,
+        y: hi * bh,
+        z,
+        sx: bl,
+        sy: bh,
+        sz: bw
+      });
+      z += bw;
     }
   }
-  return{pos,total:pos.length,perLayer,layers:nh,wUsed:z};
+  return {
+    pos,
+    total: pos.length,
+    perLayer,
+    layers: nh,
+    wUsed: z
+  };
 }
-function getPatterns(C,L,W,H){
-  return[
-    {id:"p3_3_2",name:"3+3+2 Alternating",tag:"แนะนำ",flat:true,
-     calc:()=>calcMixed(C,[{n:3,bw:W,bl:L},{n:3,bw:L,bl:W},{n:2,bw:W,bl:L}],H)},
-    {id:"p6_2", name:"6+2 Pattern",       tag:"",      flat:true,
-     calc:()=>calcMixed(C,[{n:6,bw:W,bl:L},{n:2,bw:L,bl:W}],H)},
-    {id:"uA",name:"Uniform A",tag:"",flat:true, calc:()=>calcUniform(C,L,W,H)},
-    {id:"uB",name:"Uniform B",tag:"",flat:true, calc:()=>calcUniform(C,W,L,H)},
-    {id:"uC",name:"Upright A",tag:"",flat:false,calc:()=>calcUniform(C,L,H,W)},
-    {id:"uD",name:"Upright B",tag:"",flat:false,calc:()=>calcUniform(C,W,H,L)},
-  ].map(p=>({...p,r:p.calc()}));
+function getPatterns(C, L, W, H) {
+  return [{
+    id: "p3_3_2",
+    name: "3+3+2 Alternating",
+    tag: "แนะนำ",
+    flat: true,
+    calc: () => calcMixed(C, [{
+      n: 3,
+      bw: W,
+      bl: L
+    }, {
+      n: 3,
+      bw: L,
+      bl: W
+    }, {
+      n: 2,
+      bw: W,
+      bl: L
+    }], H)
+  }, {
+    id: "p6_2",
+    name: "6+2 Pattern",
+    tag: "",
+    flat: true,
+    calc: () => calcMixed(C, [{
+      n: 6,
+      bw: W,
+      bl: L
+    }, {
+      n: 2,
+      bw: L,
+      bl: W
+    }], H)
+  }, {
+    id: "uA",
+    name: "Uniform A",
+    tag: "",
+    flat: true,
+    calc: () => calcUniform(C, L, W, H)
+  }, {
+    id: "uB",
+    name: "Uniform B",
+    tag: "",
+    flat: true,
+    calc: () => calcUniform(C, W, L, H)
+  }, {
+    id: "uC",
+    name: "Upright A",
+    tag: "",
+    flat: false,
+    calc: () => calcUniform(C, L, H, W)
+  }, {
+    id: "uD",
+    name: "Upright B",
+    tag: "",
+    flat: false,
+    calc: () => calcUniform(C, W, H, L)
+  }].map(p => ({
+    ...p,
+    r: p.calc()
+  }));
 }
-
-/* ── CALC: PALLET ────────────────────────────────────────────────────────── */
-function calcPalletLoad(C,box,pal){
-  const{L:bl,W:bw,H:bh}=box,{l:pl,w:pw,h:ph}=pal;
-  const availH=C.h-ph-50;
-  const bLayH=Math.max(1,Math.floor(availH/bh));
-  let best=null;
-  for(const[bBL,bBW]of[[bl,bw],[bw,bl]]){
-    for(const[pL,pW]of[[pl,pw],[pw,pl]]){
-      const bOnL=Math.floor(pL/bBL),bOnW=Math.floor(pW/bBW);
-      const bPerPal=bOnL*bOnW*bLayH;
-      const pCL=Math.floor(C.l/pL),pCW=Math.floor(C.w/pW);
-      const totPal=pCL*pCW,totBox=totPal*bPerPal;
-      if(!best||totBox>best.totalBoxes){
-        const pos=[],palPos=[];
-        for(let pi=0;pi<pCL;pi++)for(let pj=0;pj<pCW;pj++){
-          const px=pi*pL,pz=pj*pW;
-          palPos.push({x:px,y:0,z:pz,sx:pL,sy:ph,sz:pW});
-          for(let bi=0;bi<bOnL;bi++)for(let bj=0;bj<bOnW;bj++)for(let bk=0;bk<bLayH;bk++)
-            pos.push({x:px+bi*bBL,y:ph+bk*bh,z:pz+bj*bBW,sx:bBL,sy:bh,sz:bBW});
+function calcPalletLoad(C, box, pal) {
+  const {
+      L: bl,
+      W: bw,
+      H: bh
+    } = box,
+    {
+      l: pl,
+      w: pw,
+      h: ph
+    } = pal;
+  const availH = C.h - ph - 50,
+    bLayH = Math.max(1, Math.floor(availH / bh));
+  let best = null;
+  for (const [bBL, bBW] of [[bl, bw], [bw, bl]]) {
+    for (const [pL, pW] of [[pl, pw], [pw, pl]]) {
+      const bOnL = Math.floor(pL / bBL),
+        bOnW = Math.floor(pW / bBW);
+      const bPerPal = bOnL * bOnW * bLayH;
+      const pCL = Math.floor(C.l / pL),
+        pCW = Math.floor(C.w / pW);
+      const totPal = pCL * pCW,
+        totBox = totPal * bPerPal;
+      if (!best || totBox > best.totalBoxes) {
+        const pos = [],
+          palPos = [];
+        for (let pi = 0; pi < pCL; pi++) for (let pj = 0; pj < pCW; pj++) {
+          const px = pi * pL,
+            pz = pj * pW;
+          palPos.push({
+            x: px,
+            y: 0,
+            z: pz,
+            sx: pL,
+            sy: ph,
+            sz: pW
+          });
+          for (let bi = 0; bi < bOnL; bi++) for (let bj = 0; bj < bOnW; bj++) for (let bk = 0; bk < bLayH; bk++) pos.push({
+            x: px + bi * bBL,
+            y: ph + bk * bh,
+            z: pz + bj * bBW,
+            sx: bBL,
+            sy: bh,
+            sz: bBW
+          });
         }
-        best={totalBoxes:totBox,totalPallets:totPal,boxesPerPallet:bPerPal,
-          boxesPerLayer:bOnL*bOnW,boxLayersH:bLayH,pos,palPos,
-          usedL:pCL*pL,usedW:pCW*pW,palletsL:pCL,palletsW:pCW};
+        best = {
+          totalBoxes: totBox,
+          totalPallets: totPal,
+          boxesPerPallet: bPerPal,
+          boxesPerLayer: bOnL * bOnW,
+          boxLayersH: bLayH,
+          pos,
+          palPos,
+          usedL: pCL * pL,
+          usedW: pCW * pW,
+          palletsL: pCL,
+          palletsW: pCW
+        };
       }
     }
   }
-  return best||{totalBoxes:0,totalPallets:0,boxesPerPallet:0,boxesPerLayer:0,boxLayersH:0,pos:[],palPos:[],usedL:0,usedW:0,palletsL:0,palletsW:0};
+  return best || {
+    totalBoxes: 0,
+    totalPallets: 0,
+    boxesPerPallet: 0,
+    boxesPerLayer: 0,
+    boxLayersH: 0,
+    pos: [],
+    palPos: [],
+    usedL: 0,
+    usedW: 0,
+    palletsL: 0,
+    palletsW: 0
+  };
 }
-
-/* ── CALC: MIX ───────────────────────────────────────────────────────────── */
-function calcMixLoad(C,items){
-  const results=[];let curX=0;
-  for(const item of items){
-    const{L,W,H,wt}=item.box,subLen=item.allocLen||0;
-    if(subLen<=0){results.push({total:0,pos:[],perLayer:0,layers:0,wt,allocLen:0});continue;}
-    const orients=[
-      {bl:L,bw:W,bh:H},{bl:W,bw:L,bh:H},{bl:L,bw:H,bh:W},
-      {bl:H,bw:L,bh:W},{bl:W,bw:H,bh:L},{bl:H,bw:W,bh:L},
-    ];
-    let best={total:0,pos:[],perLayer:0,layers:0,bl:L,bw:W,bh:H};
-    for(const o of orients){
-      const nl=Math.floor(subLen/o.bl),nw=Math.floor(C.w/o.bw),nh=Math.floor(C.h/o.bh);
-      const total=nl*nw*nh;
-      if(total>best.total){
-        const pos=[];
-        for(let li=0;li<nl;li++)for(let wi=0;wi<nw;wi++)for(let hi=0;hi<nh;hi++)
-          pos.push({x:curX+li*o.bl,y:hi*o.bh,z:wi*o.bw,sx:o.bl,sy:o.bh,sz:o.bw});
-        best={total,pos,perLayer:nl*nw,layers:nh,...o};
+function calcMixLoad(C, items) {
+  const results = [];
+  let curX = 0;
+  for (const item of items) {
+    const {
+        L,
+        W,
+        H,
+        wt
+      } = item.box,
+      subLen = item.allocLen || 0;
+    if (subLen <= 0) {
+      results.push({
+        total: 0,
+        pos: [],
+        perLayer: 0,
+        layers: 0,
+        wt,
+        allocLen: 0
+      });
+      continue;
+    }
+    const orients = [{
+      bl: L,
+      bw: W,
+      bh: H
+    }, {
+      bl: W,
+      bw: L,
+      bh: H
+    }, {
+      bl: L,
+      bw: H,
+      bh: W
+    }, {
+      bl: H,
+      bw: L,
+      bh: W
+    }, {
+      bl: W,
+      bw: H,
+      bh: L
+    }, {
+      bl: H,
+      bw: W,
+      bh: L
+    }];
+    let best = {
+      total: 0,
+      pos: [],
+      perLayer: 0,
+      layers: 0,
+      bl: L,
+      bw: W,
+      bh: H
+    };
+    for (const o of orients) {
+      const nl = Math.floor(subLen / o.bl),
+        nw = Math.floor(C.w / o.bw),
+        nh = Math.floor(C.h / o.bh);
+      const total = nl * nw * nh;
+      if (total > best.total) {
+        const pos = [];
+        for (let li = 0; li < nl; li++) for (let wi = 0; wi < nw; wi++) for (let hi = 0; hi < nh; hi++) pos.push({
+          x: curX + li * o.bl,
+          y: hi * o.bh,
+          z: wi * o.bw,
+          sx: o.bl,
+          sy: o.bh,
+          sz: o.bw
+        });
+        best = {
+          total,
+          pos,
+          perLayer: nl * nw,
+          layers: nh,
+          ...o
+        };
       }
     }
-    results.push({...best,wt,allocLen:subLen});
-    curX+=subLen;
+    results.push({
+      ...best,
+      wt,
+      allocLen: subLen
+    });
+    curX += subLen;
   }
   return results;
 }
 
-/* ── THREE.JS ────────────────────────────────────────────────────────────── */
-function buildScene(el,C){
-  const W=el.clientWidth||800,H=el.clientHeight||500;
-  const scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x080c12);
-  const camera=new THREE.PerspectiveCamera(42,W/H,0.1,1000);
-  const renderer=new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(W,H);renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-  el.appendChild(renderer.domElement);
-  scene.add(new THREE.AmbientLight(0xffffff,0.5));
-  const sun=new THREE.DirectionalLight(0xfffde7,1.0);sun.position.set(10,15,8);scene.add(sun);
-  const fill=new THREE.DirectionalLight(0x4dd0e1,0.3);fill.position.set(-8,5,-6);scene.add(fill);
-  const S=100,cL=C.l/S,cH=C.h/S,cW=C.w/S;
-  const cGeo=new THREE.BoxGeometry(cL,cH,cW);
-  const wall=new THREE.Mesh(cGeo,new THREE.MeshPhongMaterial({color:0x0d2137,transparent:true,opacity:0.1,side:THREE.BackSide}));
-  wall.position.set(cL/2,cH/2,cW/2);scene.add(wall);
-  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(cGeo),new THREE.LineBasicMaterial({color:0x0ea5e9,transparent:true,opacity:0.65}));
-  edges.position.set(cL/2,cH/2,cW/2);scene.add(edges);
-  const floor=new THREE.Mesh(new THREE.BoxGeometry(cL,0.04,cW),new THREE.MeshPhongMaterial({color:0xb45309}));
-  floor.position.set(cL/2,0.02,cW/2);scene.add(floor);
-  return{scene,camera,renderer,S,cL,cH,cW};
-}
-function addIM(scene,S,pos,color,gap=1.8){
-  if(!pos||!pos.length)return;
-  const N=Math.min(pos.length,20000);
-  const geo=new THREE.BoxGeometry(1,1,1);
-  const ec=new THREE.Color(color);ec.r*=0.15;ec.g*=0.15;ec.b*=0.15;
-  const mat=new THREE.MeshPhongMaterial({color,emissive:ec,shininess:20});
-  const mesh=new THREE.InstancedMesh(geo,mat,N);
-  mesh.userData.dyn=true;
-  const dummy=new THREE.Object3D();
-  for(let i=0;i<N;i++){
-    const p=pos[i];
-    dummy.position.set((p.x+p.sx/2)/S,(p.y+p.sy/2)/S,(p.z+p.sz/2)/S);
-    dummy.scale.set((p.sx-gap)/S,(p.sy-gap)/S,(p.sz-gap)/S);
-    dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);
+/* ── PDF HELPERS ─────────────────────────────────────────────────────────── */
+function getGridData(result) {
+  if (!result || !result.pos || !result.pos.length) return null;
+  const pos = result.pos;
+  const zSet = new Set(pos.map(p => p.z));
+  const xSet = new Set(pos.map(p => p.x));
+  const ySet = new Set(pos.map(p => p.y));
+  const zVals = [...zSet].sort((a, b) => a - b);
+  const xVals = [...xSet].sort((a, b) => a - b);
+  const yVals = [...ySet].sort((a, b) => a - b);
+  const fc = zVals.length,
+    fr = yVals.length,
+    sc = xVals.length,
+    sr = yVals.length;
+  // Front view: at x=xVals[0]
+  const frontX = xVals[0];
+  const fSet = new Set(pos.filter(p => p.x === frontX).map(p => p.z + ',' + p.y));
+  const fg = [];
+  for (let ri = fr - 1; ri >= 0; ri--) {
+    const row = [];
+    for (let ci = 0; ci < fc; ci++) row.push(fSet.has(zVals[ci] + ',' + yVals[ri]));
+    fg.push(row);
   }
-  mesh.instanceMatrix.needsUpdate=true;scene.add(mesh);
+  // Side view: at z=zVals[0]
+  const sideZ = zVals[0];
+  const sSet = new Set(pos.filter(p => p.z === sideZ).map(p => p.x + ',' + p.y));
+  const sg = [];
+  for (let ri = sr - 1; ri >= 0; ri--) {
+    const row = [];
+    for (let ci = 0; ci < sc; ci++) row.push(sSet.has(xVals[ci] + ',' + yVals[ri]));
+    sg.push(row);
+  }
+  return {
+    fc,
+    fr,
+    sc,
+    sr,
+    fg,
+    sg
+  };
 }
-function clearDyn(scene){
-  scene.children.filter(c=>c.userData.dyn).forEach(c=>{scene.remove(c);c.geometry&&c.geometry.dispose();c.material&&c.material.dispose();});
+function drawGrid(canvas, grid, cols, rows, fillColor) {
+  if (!canvas || !grid || !cols || !rows) return;
+  const ctx = canvas.getContext('2d');
+  const LBL = 16,
+    w = canvas.width,
+    h = canvas.height;
+  const cellW = (w - LBL) / cols,
+    cellH = (h - LBL) / rows;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.font = '7px Arial';
+  ctx.fillStyle = '#444';
+  for (let ri = 0; ri < rows; ri++) {
+    ctx.textAlign = 'right';
+    ctx.fillText(rows - ri, LBL - 2, LBL + ri * cellH + cellH * 0.65);
+    for (let ci = 0; ci < cols; ci++) {
+      const x = LBL + ci * cellW,
+        y = LBL + ri * cellH;
+      ctx.fillStyle = grid[ri] && grid[ri][ci] ? fillColor : '#fff';
+      ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, y, cellW, cellH);
+    }
+  }
+  ctx.fillStyle = '#444';
+  ctx.textAlign = 'center';
+  for (let ci = 0; ci < cols; ci++) ctx.fillText(ci + 1, LBL + (ci + 0.5) * cellW, LBL + rows * cellH + 10);
+}
+async function buildAndSavePDF(reportItems, cKey, today) {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;left:-9999px;top:0;width:780px;padding:24px 28px;box-sizing:border-box;background:#fff;color:#000;font-family:Arial,sans-serif;';
+  document.body.appendChild(div);
+
+  // Header
+  let html = '<div style="text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #000;">';
+  html += '<div style="font-size:15px;font-weight:bold;margin-bottom:3px;">บริษัท พี.วี.ที. ฟู้ดส์ อินดัสตรีส์ จำกัด</div>';
+  html += '<div style="font-size:13px;font-weight:bold;">มาตรฐาน/ข้อกำหนดการบรรจุสินค้าเข้าตู้คอนเทนเนอร์</div>';
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:#555;margin-bottom:12px;">';
+  html += '<span>Container: ' + cKey + '</span><span>Date: ' + today + '</span></div>';
+  const grids = [];
+  for (let idx = 0; idx < reportItems.length; idx++) {
+    const it = reportItems[idx];
+    if (!it.result || !it.result.total) continue;
+    const gd = getGridData(it.result);
+    const vol = (it.result.total * it.box.L * it.box.W * it.box.H / 1e9).toFixed(1);
+    const wt = Math.round(it.result.total * it.wt);
+
+    // Cell size: adaptive
+    const MAX_CELL = 11;
+    const fcell = gd ? Math.min(MAX_CELL, Math.floor(180 / gd.fr), Math.floor(160 / gd.fc)) : MAX_CELL;
+    const scell = gd ? Math.min(MAX_CELL, Math.floor(180 / gd.sr), Math.floor(280 / gd.sc)) : MAX_CELL;
+    const LBL = 16;
+    const fW = gd ? gd.fc * fcell + LBL : 80,
+      fH = gd ? gd.fr * fcell + LBL : 80;
+    const sW = gd ? gd.sc * scell + LBL : 200,
+      sH = gd ? gd.sr * scell + LBL : 80;
+    const colorHex = it.color || '#d0d0d0';
+    html += '<div style="border:1px solid #bbb;margin-bottom:14px;padding:10px;page-break-inside:avoid;">';
+    // Title bar
+    if (it.title) html += '<div style="font-size:10px;font-weight:bold;color:' + it.color + ';border-left:3px solid ' + it.color + ';padding-left:6px;margin-bottom:8px;">' + it.title + '</div>';
+    html += '<div style="display:flex;gap:12px;align-items:flex-start;">';
+    // Grids
+    html += '<div style="flex-shrink:0;">';
+    html += '<div style="font-size:9px;text-align:center;color:#555;margin-bottom:3px;font-weight:bold;letter-spacing:0.05em;">FRONT VIEW</div>';
+    html += '<canvas id="fg' + idx + '" width="' + fW + '" height="' + (fH + 12) + '" style="display:block;border:1px solid #ddd;"></canvas>';
+    html += '<div style="font-size:9px;text-align:center;color:#555;margin:8px 0 3px;font-weight:bold;letter-spacing:0.05em;">SIDE VIEW</div>';
+    html += '<canvas id="sg' + idx + '" width="' + sW + '" height="' + (sH + 12) + '" style="display:block;border:1px solid #ddd;"></canvas>';
+    html += '</div>';
+    // Stats
+    html += '<div style="flex:1;padding-left:16px;">';
+    html += '<table style="font-size:11px;margin-bottom:10px;"><tbody>';
+    html += '<tr><td style="color:#555;padding-right:8px;">Total:</td><td style="font-weight:bold;font-size:14px;">' + it.result.total.toLocaleString() + ' packages</td></tr>';
+    html += '<tr><td style="color:#555;">Cargo volume:</td><td>' + vol + ' m\u00b3</td></tr>';
+    html += '<tr><td style="color:#555;">Cargo weight:</td><td>' + wt.toLocaleString() + ' kg</td></tr>';
+    html += '</tbody></table>';
+    html += '<table style="border-collapse:collapse;font-size:10px;width:100%;">';
+    html += '<thead><tr style="background:#f0f0f0;">';
+    html += '<th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Name</th>';
+    html += '<th style="border:1px solid #ccc;padding:4px 8px;text-align:right;">Packages</th>';
+    html += '<th style="border:1px solid #ccc;padding:4px 8px;text-align:right;">Volume</th>';
+    html += '<th style="border:1px solid #ccc;padding:4px 8px;text-align:right;">Weight</th>';
+    html += '</tr></thead><tbody>';
+    html += '<tr><td style="border:1px solid #ccc;padding:4px 8px;">' + it.name + '</td>';
+    html += '<td style="border:1px solid #ccc;padding:4px 8px;text-align:right;">' + it.result.total.toLocaleString() + '</td>';
+    html += '<td style="border:1px solid #ccc;padding:4px 8px;text-align:right;">' + vol + ' m\u00b3</td>';
+    html += '<td style="border:1px solid #ccc;padding:4px 8px;text-align:right;">' + wt.toLocaleString() + ' kg</td>';
+    html += '</tr></tbody></table>';
+    // Arrangement detail
+    html += '<div style="margin-top:8px;font-size:9px;color:#666;">';
+    html += 'Layer: ' + it.result.perLayer + ' boxes &nbsp;|&nbsp; Height: ' + it.result.layers + ' layers';
+    if (gd) html += ' &nbsp;|&nbsp; Grid: ' + gd.sc + '\u00d7' + gd.fc + '\u00d7' + gd.sr;
+    html += '</div>';
+    html += '</div></div></div>';
+    grids.push({
+      idx,
+      gd,
+      fcell,
+      scell,
+      colorHex
+    });
+  }
+
+  // Footer
+  html += '<div style="display:flex;justify-content:space-between;font-size:9px;color:#888;margin-top:8px;border-top:1px solid #ddd;padding-top:6px;">';
+  html += '<span>PVT Foods Industries Co., Ltd.</span><span>SP-WH-005 Rev.00.05.06.18</span></div>';
+  div.innerHTML = html;
+
+  // Draw grids on canvases
+  for (const {
+    idx,
+    gd,
+    fcell,
+    scell,
+    colorHex
+  } of grids) {
+    if (!gd) continue;
+    const fg = div.querySelector('#fg' + idx);
+    const sg = div.querySelector('#sg' + idx);
+    if (fg) drawGrid(fg, gd.fg, gd.fc, gd.fr, colorHex);
+    if (sg) drawGrid(sg, gd.sg, gd.sc, gd.sr, colorHex);
+  }
+
+  // Capture + PDF
+  try {
+    const canvas = await html2canvas(div, {
+      scale: 2,
+      useCORS: false,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+    const imgData = canvas.toDataURL('image/png');
+    const {
+      jsPDF
+    } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pgW = 210,
+      pgH = 297;
+    const imgW = pgW,
+      imgH = canvas.height * pgW / canvas.width;
+    if (imgH <= pgH) {
+      doc.addImage(imgData, 'PNG', 0, 0, imgW, imgH);
+    } else {
+      let yOff = 0;
+      while (yOff < imgH) {
+        if (yOff > 0) doc.addPage();
+        doc.addImage(imgData, 'PNG', 0, -yOff, imgW, imgH);
+        yOff += pgH;
+      }
+    }
+    doc.save('pvt-loading-plan.pdf');
+  } finally {
+    document.body.removeChild(div);
+  }
 }
 
-/* ── SHARED STYLES ───────────────────────────────────────────────────────── */
-const fmt=n=>Math.round(n).toLocaleString();
-const fmtD=(n,d=1)=>n.toFixed(d);
-const gwAvg=s=>s.gwMin!=null?+((s.gwMin+s.gwMax)/2).toFixed(3):6.0;
-const SEL={width:"100%",background:"#0a0f18",border:"1px solid #111827",borderRadius:"5px",color:"#e2e8f0",padding:"7px 10px",fontSize:"12px",cursor:"pointer"};
-const INP={width:"100%",background:"#0a0f18",border:"1px solid #111827",borderRadius:"5px",color:"#e2e8f0",padding:"6px 8px",fontSize:"13px",boxSizing:"border-box",fontVariantNumeric:"tabular-nums"};
-
-/* ── HELPER COMPONENTS ───────────────────────────────────────────────────── */
-function FG({label,children,action}){
-  return<div style={{marginBottom:"14px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"7px"}}>
-      <div style={{fontSize:"9px",color:"#0ea5e9",textTransform:"uppercase",letterSpacing:"0.18em",fontWeight:700}}>{label}</div>
-      {action}
-    </div>
-    {children}
-  </div>;
+/* ── PALLET LOAD SPECS (warehouse mode) ─────────────────────────────────── */
+const PAL_SPECS = {
+  "EUR/EPAL (1200×800)": {
+    l: 1200,
+    w: 800,
+    h: 145,
+    tare: 23,
+    staticKg: 4000,
+    dynKg: 1500,
+    rackKg: 1000
+  },
+  "US/GMA (1219×1016)": {
+    l: 1219,
+    w: 1016,
+    h: 145,
+    tare: 27,
+    staticKg: 3628,
+    dynKg: 1360,
+    rackKg: 900
+  },
+  "Thai Std (1100×1100)": {
+    l: 1100,
+    w: 1100,
+    h: 150,
+    tare: 20,
+    staticKg: 2000,
+    dynKg: 1000,
+    rackKg: 600
+  },
+  "Custom": {
+    l: 1200,
+    w: 1000,
+    h: 145,
+    tare: 25,
+    staticKg: 2000,
+    dynKg: 1000,
+    rackKg: 600
+  }
+};
+const HANDLE_FACTORS = {
+  "1-2 ครั้ง": 1.00,
+  "3-4 ครั้ง": 0.80,
+  "5+ ครั้ง": 0.65
+};
+function calcWhPallet(box, pal, s) {
+  const {
+      L: bl,
+      W: bw,
+      H: bh,
+      wt: wt
+    } = box,
+    {
+      l: pl,
+      w: pw,
+      h: ph,
+      tare,
+      dynKg
+    } = pal;
+  const o1 = {
+    bL: bl,
+    bW: bw,
+    nL: Math.floor(pl / bl),
+    nW: Math.floor(pw / bw)
+  };
+  const o2 = {
+    bL: bw,
+    bW: bl,
+    nL: Math.floor(pl / bw),
+    nW: Math.floor(pw / bl)
+  };
+  const ori = o1.nL * o1.nW >= o2.nL * o2.nW ? o1 : o2;
+  const bpl = ori.nL * ori.nW,
+    ovL = pl - ori.nL * ori.bL,
+    ovW = pw - ori.nW * ori.bW;
+  const hf = HANDLE_FACTORS[s.handleFreq] || 0.80;
+  const effDyn = dynKg * hf,
+    cap = effDyn - tare;
+  const mW = bpl > 0 && wt > 0 ? Math.max(0, Math.floor(cap / (bpl * wt))) : 0;
+  const mH = bh > 0 ? Math.max(0, Math.floor((s.maxHeight - ph - 200) / bh)) : 0;
+  let mC = 9999,
+    cNote = "";
+  if (s.bct && +s.bct > 0) {
+    const es = +s.bct / s.compSF;
+    mC = Math.max(1, Math.floor(es / wt) + 1);
+    cNote = "BCT " + s.bct + "kg÷SF" + s.compSF + "=" + es.toFixed(0) + "kg";
+  }
+  const manLim = s.manualLayers && +s.manualLayers > 0 ? +s.manualLayers : 9999;
+  const rec = Math.min(mW, mH, mC, manLim);
+  const lim = rec === mW ? "⚖ Weight" : rec === mH ? "📏 Height" : rec === mC ? "📦 Compression" : "✏ Manual";
+  const stkH = ph + rec * bh;
+  const totWt = tare + bpl * rec * wt;
+  const fp = pl / 1000 * (pw / 1000);
+  const fkgm2 = totWt / fp;
+  return {
+    ori,
+    bpl,
+    ovL,
+    ovW,
+    hf,
+    effDyn,
+    cap,
+    mW,
+    mH,
+    mC,
+    manLim,
+    rec,
+    lim,
+    stkH,
+    totWt,
+    fkgm2,
+    wtUtil: totWt / effDyn,
+    cNote,
+    floorOK: fkgm2 <= s.floorLoad,
+    htOK: stkH <= s.maxHeight - 200,
+    wtOK: totWt <= effDyn
+  };
 }
-function SkuChip({sku}){
-  if(!sku||sku.id==="manual")return null;
-  return<div style={{marginTop:"5px",background:"#0a0f18",border:"1px solid #111827",borderRadius:"5px",padding:"6px 9px"}}>
-    {[["Can",sku.can],["W×L×H",sku.w+"×"+sku.l+"×"+sku.h+"mm"],
-      ["GW",sku.gwMin!=null?(sku.gwMin===sku.gwMax?sku.gwMin+"kg":sku.gwMin+"–"+sku.gwMax+"kg"):"N/A"]
-    ].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:"2px",fontSize:"10px"}}>
-      <span style={{color:"#475569"}}>{k}</span>
-      <span style={{color:k==="GW"?"#fbbf24":"#94a3b8",fontWeight:k==="GW"?700:400}}>{v}</span>
-    </div>)}
-  </div>;
+function PalletTopSVG({
+  pl,
+  pw,
+  ori,
+  bc,
+  pc
+}) {
+  const sc = Math.min(180 / pl, 130 / pw);
+  const W = Math.round(pl * sc) + 2,
+    H = Math.round(pw * sc) + 2;
+  const cells = [];
+  for (let li = 0; li < ori.nL; li++) for (let wi = 0; wi < ori.nW; wi++) cells.push(/*#__PURE__*/React.createElement("rect", {
+    key: li + "-" + wi,
+    x: li * ori.bL * sc + 1,
+    y: wi * ori.bW * sc + 1,
+    width: ori.bL * sc - 2,
+    height: ori.bW * sc - 2,
+    fill: bc || "#15803d",
+    stroke: "#14532d",
+    strokeWidth: 0.5,
+    rx: 1
+  }));
+  return /*#__PURE__*/React.createElement("svg", {
+    width: W,
+    height: H,
+    style: {
+      display: "block"
+    }
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: 0,
+    y: 0,
+    width: pl * sc,
+    height: pw * sc,
+    fill: pc || "#ca8a04",
+    stroke: "#92610a",
+    strokeWidth: 1.5,
+    rx: 2
+  }), cells, /*#__PURE__*/React.createElement("text", {
+    x: pl * sc / 2,
+    y: H,
+    textAnchor: "middle",
+    fontSize: 8,
+    fill: "#9ca3af"
+  }, pl, "mm"));
+}
+function PalletElevSVG({
+  ph,
+  pw,
+  bH,
+  nL,
+  maxH,
+  bc,
+  pc
+}) {
+  const clr = 200;
+  const sc = Math.min(170 / pw, 190 / maxH);
+  const W = Math.round(pw * sc) + 55,
+    H = Math.round(maxH * sc) + 25;
+  const bot = H - 15;
+  const lrs = [];
+  for (let i = 0; i < nL; i++) {
+    const y = bot - ph * sc - (i + 1) * bH * sc;
+    lrs.push(/*#__PURE__*/React.createElement("rect", {
+      key: i,
+      x: 30,
+      y: y,
+      width: pw * sc,
+      height: bH * sc - 0.8,
+      fill: i === nL - 1 ? "#16a34a" : bc || "#15803d",
+      stroke: "#14532d",
+      strokeWidth: 0.5
+    }));
+  }
+  const limY = bot - (maxH - clr) * sc;
+  const topY = bot - ph * sc - nL * bH * sc;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: W,
+    height: H,
+    style: {
+      display: "block"
+    }
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: 30,
+    y: limY,
+    width: pw * sc,
+    height: Math.max(0, topY - limY),
+    fill: "rgba(239,68,68,0.08)"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: 18,
+    y1: limY,
+    x2: W - 3,
+    y2: limY,
+    stroke: "#dc2626",
+    strokeWidth: 1,
+    strokeDasharray: "5,3"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: 20,
+    y: limY - 3,
+    fontSize: 7,
+    fill: "#dc2626"
+  }, maxH - clr, "mm"), lrs, /*#__PURE__*/React.createElement("rect", {
+    x: 30,
+    y: bot - ph * sc,
+    width: pw * sc,
+    height: ph * sc,
+    fill: pc || "#ca8a04",
+    stroke: "#92610a",
+    strokeWidth: 1.5
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: 8,
+    y1: bot,
+    x2: W - 3,
+    y2: bot,
+    stroke: "#d1d5db",
+    strokeWidth: 2
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: 16,
+    y1: bot,
+    x2: 16,
+    y2: topY,
+    stroke: "#6b7280",
+    strokeWidth: 1
+  }), /*#__PURE__*/React.createElement("text", {
+    x: 4,
+    y: (bot + topY) / 2 + 3,
+    fontSize: 7,
+    fill: "#6b7280",
+    textAnchor: "middle",
+    transform: "rotate(-90,4," + (bot + topY) / 2 + ")"
+  }, ph + nL * bH, "mm"));
+}
+function WarehousePanel({
+  wr,
+  box,
+  pal,
+  settings
+}) {
+  if (!wr || !wr.bpl) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#d1d5db",
+      fontSize: "13px"
+    }
+  }, "เลือกสินค้าและตั้งค่าด้านซ้ายเพื่อเริ่มคำนวณ");
+  const {
+    ori,
+    bpl,
+    ovL,
+    ovW,
+    effDyn,
+    cap,
+    mW,
+    mH,
+    mC,
+    manLim,
+    rec,
+    lim,
+    stkH,
+    totWt,
+    fkgm2,
+    wtUtil,
+    cNote,
+    floorOK,
+    htOK,
+    wtOK
+  } = wr;
+  const allOK = wtOK && htOK && floorOK;
+  const CHK = ({
+    ok,
+    label,
+    val,
+    limit
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      padding: "7px 10px",
+      background: ok ? "#dcfce7" : "#fef2f2",
+      border: "1px solid " + (ok ? "#16a34a" : "#fecaca"),
+      borderRadius: "5px",
+      marginBottom: "5px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: "14px"
+    }
+  }, ok ? "✅" : "⚠️"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "11px",
+      color: ok ? "#16a34a" : "#dc2626",
+      fontWeight: 700
+    }
+  }, label, ": ", val), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db"
+    }
+  }, "จำกัด: ", limit)));
+  const ROW = ({
+    lbl,
+    max,
+    note,
+    active
+  }) => /*#__PURE__*/React.createElement("tr", {
+    style: {
+      borderBottom: "1px solid #e8edf2",
+      background: active ? "#f0fdf4" : "transparent"
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 8px",
+      color: active ? "#16a34a" : "#6b7280",
+      fontWeight: active ? 700 : 400,
+      fontSize: "11px"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 8px",
+      fontWeight: 700,
+      color: active ? "#16a34a" : "#1e293b",
+      fontSize: "12px",
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, max), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 8px",
+      color: "#d1d5db",
+      fontSize: "9px"
+    }
+  }, note));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: "#f5f7fa",
+      overflowY: "auto",
+      padding: "16px 20px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "14px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "11px",
+      color: "#2563eb",
+      textTransform: "uppercase",
+      letterSpacing: "0.15em",
+      fontWeight: 700
+    }
+  }, "Warehouse Pallet Design"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginTop: "2px"
+    }
+  }, "Dynamic load: ", effDyn.toFixed(0), "kg · Handling: ", settings.handleFreq, " · Factor: ", (wr.hf * 100).toFixed(0), "%")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "24px",
+      fontWeight: 900,
+      color: allOK ? "#16a34a" : "#dc2626",
+      lineHeight: 1
+    }
+  }, rec), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      textTransform: "uppercase"
+    }
+  }, "ชั้น (layers)"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "12px",
+      marginBottom: "14px",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "8px",
+      padding: "10px",
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: "6px",
+      fontWeight: 600,
+      textAlign: "center"
+    }
+  }, "TOP VIEW"), /*#__PURE__*/React.createElement(PalletTopSVG, {
+    pl: pal.l,
+    pw: pal.w,
+    ori: ori,
+    bc: "#15803d",
+    pc: "#ca8a04"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#9ca3af",
+      marginTop: "4px",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#16a34a",
+      fontWeight: 700
+    }
+  }, bpl), " กล่อง/ชั้น", ovL > 5 || ovW > 5 ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#d1d5db"
+    }
+  }, " · เหลือ ", ovL, "×", ovW, "mm") : null)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "8px",
+      padding: "10px",
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: "6px",
+      fontWeight: 600,
+      textAlign: "center"
+    }
+  }, "SIDE ELEVATION"), /*#__PURE__*/React.createElement(PalletElevSVG, {
+    ph: pal.h,
+    pw: pal.w,
+    bH: box.H,
+    nL: rec,
+    maxH: settings.maxHeight,
+    bc: "#15803d",
+    pc: "#ca8a04"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#9ca3af",
+      marginTop: "4px",
+      textAlign: "center"
+    }
+  }, "สูงรวม ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: htOK ? "#16a34a" : "#dc2626",
+      fontWeight: 700
+    }
+  }, stkH, "mm"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: "170px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#2563eb",
+      textTransform: "uppercase",
+      letterSpacing: "0.1em",
+      fontWeight: 700,
+      marginBottom: "7px"
+    }
+  }, "Safety Status"), /*#__PURE__*/React.createElement(CHK, {
+    ok: wtOK,
+    label: "น้ำหนัก",
+    val: totWt.toFixed(0) + "kg",
+    limit: effDyn.toFixed(0) + "kg dynamic"
+  }), /*#__PURE__*/React.createElement(CHK, {
+    ok: htOK,
+    label: "ความสูง",
+    val: stkH + "mm",
+    limit: settings.maxHeight - 200 + "mm (net)"
+  }), /*#__PURE__*/React.createElement(CHK, {
+    ok: floorOK,
+    label: "Floor load",
+    val: Math.round(fkgm2) + "kg/m²",
+    limit: settings.floorLoad + "kg/m²"
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "8px",
+      padding: "12px",
+      marginBottom: "12px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#2563eb",
+      textTransform: "uppercase",
+      letterSpacing: "0.1em",
+      fontWeight: 700,
+      marginBottom: "8px"
+    }
+  }, "ขีดจำกัดจำนวนชั้น (Layer Limits)"), /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: "100%",
+      borderCollapse: "collapse"
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      borderBottom: "1px solid #e8edf2"
+    }
+  }, ["ข้อจำกัด", "Max Layers", "รายละเอียด"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "4px 8px",
+      textAlign: "left",
+      color: "#d1d5db",
+      fontWeight: 600,
+      fontSize: "9px",
+      textTransform: "uppercase"
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement(ROW, {
+    lbl: "⚖ น้ำหนัก (Dynamic)",
+    max: mW,
+    active: lim.includes("Weight"),
+    note: "cargo cap. " + cap.toFixed(0) + "kg ÷ (" + bpl + "×" + box.wt + "kg/box)"
+  }), /*#__PURE__*/React.createElement(ROW, {
+    lbl: "📏 ความสูง",
+    max: mH,
+    active: lim.includes("Height"),
+    note: settings.maxHeight - pal.h - 200 + "mm avail ÷ " + box.H + "mm/layer"
+  }), /*#__PURE__*/React.createElement(ROW, {
+    lbl: "📦 Box Compression",
+    max: mC === 9999 ? "∞" : mC,
+    active: lim.includes("Compress"),
+    note: cNote || "ไม่ได้ระบุ BCT (กรอกด้านซ้ายเพื่อคำนวณ)"
+  }), /*#__PURE__*/React.createElement(ROW, {
+    lbl: "✏ Manual Limit",
+    max: manLim === 9999 ? "ไม่จำกัด" : manLim,
+    active: lim.includes("Manual"),
+    note: "ผู้ใช้กำหนด (optional)"
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#dcfce7",
+      border: "2px solid #16a34a",
+      borderRadius: "8px",
+      padding: "14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "10px",
+      color: "#14532d",
+      textTransform: "uppercase",
+      letterSpacing: "0.1em",
+      fontWeight: 700,
+      marginBottom: "10px"
+    }
+  }, allOK ? "✅" : "⚠️", " คำแนะนำการจัดเรียงบน Warehouse Pallet"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "7px",
+      marginBottom: "10px"
+    }
+  }, [["กล่อง / ชั้น", bpl + " กล่อง (" + ori.nL + "×" + ori.nW + ")"], ["จำนวนชั้น", rec + " ชั้น — จำกัดโดย " + lim], ["กล่อง / พาเลท", bpl * rec + " กล่อง"], ["น้ำหนักรวม", totWt.toFixed(1) + " kg (" + (wtUtil * 100).toFixed(0) + "% capacity)"], ["ความสูง stack", stkH + "mm (pallet " + pal.h + "+boxes " + rec * box.H + ")"], ["Floor load", Math.round(fkgm2) + " kg/m²"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      background: "#f0fdf4",
+      borderRadius: "5px",
+      padding: "6px 9px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "8px",
+      color: "#16a34a",
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: "2px"
+    }
+  }, k), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "12px",
+      fontWeight: 700,
+      color: "#1e293b",
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, v)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#14532d",
+      borderTop: "1px solid #16a34a",
+      paddingTop: "8px",
+      lineHeight: 1.6
+    }
+  }, "📌 Static rating (", (effDyn / wr.hf).toFixed(0), "kg) ลดเหลือ ", effDyn.toFixed(0), "kg สำหรับ Dynamic load (", settings.handleFreq, ") — ลด ", Math.round((1 - wr.hf) * 100), "% เพราะ repetitive handling ทำให้ pallet เสียหายได้")));
+}
+
+/* ── THREE.JS ────────────────────────────────────────────────────────────── */
+function buildScene(el, C) {
+  const W = el.clientWidth || 800,
+    H = el.clientHeight || 500;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1e293b);
+  const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  el.appendChild(renderer.domElement);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xfffde7, 1.0);
+  sun.position.set(10, 15, 8);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x4dd0e1, 0.3);
+  fill.position.set(-8, 5, -6);
+  scene.add(fill);
+  const S = 100,
+    cL = C.l / S,
+    cH = C.h / S,
+    cW = C.w / S;
+  const cGeo = new THREE.BoxGeometry(cL, cH, cW);
+  const wall = new THREE.Mesh(cGeo, new THREE.MeshPhongMaterial({
+    color: 0x0d2137,
+    transparent: true,
+    opacity: 0.1,
+    side: THREE.BackSide
+  }));
+  wall.position.set(cL / 2, cH / 2, cW / 2);
+  scene.add(wall);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(cGeo), new THREE.LineBasicMaterial({
+    color: 0x60a5fa,
+    transparent: true,
+    opacity: 0.65
+  }));
+  edges.position.set(cL / 2, cH / 2, cW / 2);
+  scene.add(edges);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(cL, 0.04, cW), new THREE.MeshPhongMaterial({
+    color: 0xb45309
+  }));
+  floor.position.set(cL / 2, 0.02, cW / 2);
+  scene.add(floor);
+  return {
+    scene,
+    camera,
+    renderer,
+    S,
+    cL,
+    cH,
+    cW
+  };
+}
+function addIM(scene, S, pos, color, gap = 1.8) {
+  if (!pos || !pos.length) return;
+  const N = Math.min(pos.length, 20000);
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const ec = new THREE.Color(color);
+  ec.r *= 0.15;
+  ec.g *= 0.15;
+  ec.b *= 0.15;
+  const mat = new THREE.MeshPhongMaterial({
+    color,
+    emissive: ec,
+    shininess: 20
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, N);
+  mesh.userData.dyn = true;
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < N; i++) {
+    const p = pos[i];
+    dummy.position.set((p.x + p.sx / 2) / S, (p.y + p.sy / 2) / S, (p.z + p.sz / 2) / S);
+    dummy.scale.set((p.sx - gap) / S, (p.sy - gap) / S, (p.sz - gap) / S);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
+}
+function clearDyn(scene) {
+  scene.children.filter(c => c.userData.dyn).forEach(c => {
+    scene.remove(c);
+    c.geometry && c.geometry.dispose();
+    c.material && c.material.dispose();
+  });
+}
+
+/* ── STYLES ──────────────────────────────────────────────────────────────── */
+const fmt = n => Math.round(n).toLocaleString();
+const fmtD = (n, d = 1) => n.toFixed(d);
+const gwAvg = s => s.gwMin != null ? +((s.gwMin + s.gwMax) / 2).toFixed(3) : 6.0;
+const SEL = {
+  width: "100%",
+  background: "#ffffff",
+  border: "1px solid #e8edf2",
+  borderRadius: "5px",
+  color: "#1e293b",
+  padding: "7px 10px",
+  fontSize: "12px",
+  cursor: "pointer"
+};
+const INP = {
+  width: "100%",
+  background: "#ffffff",
+  border: "1px solid #e8edf2",
+  borderRadius: "5px",
+  color: "#1e293b",
+  padding: "6px 8px",
+  fontSize: "13px",
+  boxSizing: "border-box",
+  fontVariantNumeric: "tabular-nums"
+};
+function FG({
+  label,
+  children,
+  action
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "7px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#2563eb",
+      textTransform: "uppercase",
+      letterSpacing: "0.18em",
+      fontWeight: 700
+    }
+  }, label), action), children);
+}
+function SkuChip({
+  sku
+}) {
+  if (!sku || sku.id === "manual") return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: "5px",
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "5px",
+      padding: "6px 9px"
+    }
+  }, [["Can", sku.can], ["W×L×H", sku.w + "×" + sku.l + "×" + sku.h + "mm"], ["GW", sku.gwMin != null ? sku.gwMin === sku.gwMax ? sku.gwMin + "kg" : sku.gwMin + "–" + sku.gwMax + "kg" : "N/A"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "2px",
+      fontSize: "10px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#d1d5db"
+    }
+  }, k), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: k === "GW" ? "#fbbf24" : "#6b7280",
+      fontWeight: k === "GW" ? 700 : 400
+    }
+  }, v))));
 }
 
 /* ── MAIN APP ────────────────────────────────────────────────────────────── */
-function App(){
-  const[mode,setMode]=useState("single");
-  const[cKey,setCKey]=useState("20ft Standard");
-  const[sideOpen,setSide]=useState(true);
-
-  /* Single */
-  const[skuId,setSkuId]=useState("s12");
-  const[box,setBox]=useState({L:348,W:262,H:95,wt:6.26});
-  const[pid,setPid]=useState("p3_3_2");
-  const[hov,setHov]=useState(null);
-
-  /* Pallet */
-  const[palSkuId,setPalSkuId]=useState("s12");
-  const[palBox,setPalBox]=useState({L:348,W:262,H:95,wt:6.26});
-  const[palKey,setPalKey]=useState("EUR/EPAL (1200×800)");
-  const[palDims,setPalDims]=useState({l:1200,w:800,h:145});
-
-  /* Mix */
-  const mkItem=sid=>{const s=SKUS.find(x=>x.id===sid)||SKUS[1];return{skuId:sid,box:{L:s.l,W:s.w,H:s.h,wt:gwAvg(s)},allocLen:0};};
-  const[mixItems,setMixItems]=useState(()=>{
-    const C0=CONT["20ft Standard"];
-    return[{...mkItem("s12"),allocLen:Math.floor(C0.l/2)},{...mkItem("s2"),allocLen:Math.floor(C0.l/2)}];
+function App() {
+  const [mode, setMode] = useState("single");
+  const [cKey, setCKey] = useState("20ft Standard");
+  const [sideOpen, setSide] = useState(true);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [skuId, setSkuId] = useState("s12");
+  const [box, setBox] = useState({
+    L: 348,
+    W: 262,
+    H: 95,
+    wt: 6.26
   });
+  const [pid, setPid] = useState("p3_3_2");
+  const [hov, setHov] = useState(null);
+  const [palSkuId, setPalSkuId] = useState("s12");
+  const [palBox, setPalBox] = useState({
+    L: 348,
+    W: 262,
+    H: 95,
+    wt: 6.26
+  });
+  const [palKey, setPalKey] = useState("EUR/EPAL (1200×800)");
+  const [palDims, setPalDims] = useState({
+    l: 1200,
+    w: 800,
+    h: 145
+  });
+  const mkItem = sid => {
+    const s = SKUS.find(x => x.id === sid) || SKUS[1];
+    return {
+      skuId: sid,
+      box: {
+        L: s.l,
+        W: s.w,
+        H: s.h,
+        wt: gwAvg(s)
+      },
+      allocLen: 0
+    };
+  };
+  const [mixItems, setMixItems] = useState(() => {
+    const C0 = CONT["20ft Standard"];
+    return [{
+      ...mkItem("s12"),
+      allocLen: Math.floor(C0.l / 2)
+    }, {
+      ...mkItem("s2"),
+      allocLen: Math.floor(C0.l / 2)
+    }];
+  });
+  const mountRef = useRef(null);
+  const threeRef = useRef(null);
+  const isDrag = useRef(false);
+  const pm = useRef({
+    x: 0,
+    y: 0
+  });
+  const camSt = useRef({
+    theta: 0.9,
+    phi: 1.05,
+    r: 42
+  });
+  const C = CONT[cKey];
 
-  const mountRef=useRef(null);const threeRef=useRef(null);
-  const isDrag=useRef(false);const pm=useRef({x:0,y:0});
-  const camSt=useRef({theta:0.9,phi:1.05,r:42});
+  /* Warehouse mode */
+  const [whSkuId, setWhSkuId] = useState("s12");
+  const [whBox, setWhBox] = useState({
+    L: 348,
+    W: 262,
+    H: 95,
+    wt: 6.26
+  });
+  const [whPalKey, setWhPalKey] = useState("EUR/EPAL (1200×800)");
+  const [whPal, setWhPal] = useState(PAL_SPECS["EUR/EPAL (1200×800)"]);
+  const [whSettings, setWhSettings] = useState({
+    maxHeight: 4000,
+    floorLoad: 3000,
+    handleFreq: "3-4 ครั้ง",
+    bct: "",
+    compSF: 4.5,
+    manualLayers: ""
+  });
+  const whRes = useMemo(() => whBox.wt > 0 && whPal.l > 0 ? calcWhPallet(whBox, whPal, whSettings) : null, [whBox, whPal, whSettings]);
+  const patterns = useMemo(() => getPatterns(C, box.L, box.W, box.H), [C, box.L, box.W, box.H]);
+  const actPat = patterns.find(p => p.id === pid) || patterns[0];
+  const singRes = actPat.r;
+  const palRes = useMemo(() => calcPalletLoad(C, palBox, palDims), [C, palBox, palDims]);
+  const mixRes = useMemo(() => calcMixLoad(C, mixItems), [C, mixItems]);
+  const layers3D = useMemo(() => {
+    if (mode === "single") return [{
+      pos: singRes.pos,
+      color: 0x22c55e
+    }];
+    if (mode === "pallet") return [{
+      pos: palRes.palPos,
+      color: 0xd97706,
+      gap: 0.8
+    }, {
+      pos: palRes.pos,
+      color: 0x22c55e
+    }];
+    if (mode === "mix") return mixRes.map((r, i) => ({
+      pos: r.pos,
+      color: ICOLS[i]
+    }));
+    return [];
+  }, [mode, singRes, palRes, mixRes]);
+  const summ = useMemo(() => {
+    if (mode === "single") return {
+      boxes: singRes.total,
+      wt: singRes.total * box.wt
+    };
+    if (mode === "pallet") return {
+      boxes: palRes.totalBoxes,
+      wt: palRes.totalBoxes * palBox.wt
+    };
+    if (mode === "mix") return mixRes.reduce((a, r) => ({
+      boxes: a.boxes + r.total,
+      wt: a.wt + r.total * r.wt
+    }), {
+      boxes: 0,
+      wt: 0
+    });
+    return {
+      boxes: 0,
+      wt: 0
+    };
+  }, [mode, singRes, palRes, mixRes, box.wt, palBox.wt]);
+  const curSku = SKUS.find(s => s.id === skuId);
+  const curPalSku = SKUS.find(s => s.id === palSkuId);
 
-  const C=CONT[cKey];
-
-  /* Calculations */
-  const patterns=useMemo(()=>getPatterns(C,box.L,box.W,box.H),[C,box.L,box.W,box.H]);
-  const actPat=patterns.find(p=>p.id===pid)||patterns[0];
-  const singRes=actPat.r;
-  const palRes=useMemo(()=>calcPalletLoad(C,palBox,palDims),[C,palBox,palDims]);
-  const mixRes=useMemo(()=>calcMixLoad(C,mixItems),[C,mixItems]);
-
-  /* 3D layers */
-  const layers3D=useMemo(()=>{
-    if(mode==="single")return[{pos:singRes.pos,color:0x22c55e}];
-    if(mode==="pallet")return[{pos:palRes.palPos,color:0xd97706,gap:0.8},{pos:palRes.pos,color:0x22c55e}];
-    if(mode==="mix")return mixRes.map((r,i)=>({pos:r.pos,color:ICOLS[i]}));
-    return[];
-  },[mode,singRes,palRes,mixRes]);
-
-  /* Summary */
-  const summ=useMemo(()=>{
-    if(mode==="single")return{boxes:singRes.total,wt:singRes.total*box.wt};
-    if(mode==="pallet")return{boxes:palRes.totalBoxes,wt:palRes.totalBoxes*palBox.wt};
-    if(mode==="mix")return mixRes.reduce((a,r)=>({boxes:a.boxes+r.total,wt:a.wt+r.total*r.wt}),{boxes:0,wt:0});
-    return{boxes:0,wt:0};
-  },[mode,singRes,palRes,mixRes,box.wt,palBox.wt]);
+  /* PDF generation */
+  const handlePDF = async () => {
+    setPdfLoading(true);
+    try {
+      let items = [];
+      const today = new Date().toLocaleDateString('en-GB');
+      if (mode === "single") {
+        items = [{
+          name: curSku && curSku.id !== "manual" ? curSku.name : "Custom Box",
+          result: singRes,
+          box,
+          wt: box.wt,
+          color: '#555'
+        }];
+      } else if (mode === "pallet") {
+        const palResult = {
+          pos: palRes.pos,
+          total: palRes.totalBoxes,
+          perLayer: palRes.boxesPerLayer,
+          layers: palRes.boxLayersH
+        };
+        items = [{
+          name: curPalSku && curPalSku.id !== "manual" ? curPalSku.name : "Custom Box",
+          result: palResult,
+          box: palBox,
+          wt: palBox.wt,
+          title: "Pallet Load: " + palRes.palletsL + "×" + palRes.palletsW + "=" + palRes.totalPallets + " pallets",
+          color: '#d97706'
+        }];
+      } else if (mode === "mix") {
+        items = mixItems.map((it, i) => ({
+          name: (SKUS.find(s => s.id === it.skuId) || {
+            name: "Item " + (i + 1)
+          }).name,
+          result: mixRes[i] || {
+            pos: [],
+            total: 0,
+            perLayer: 0,
+            layers: 0
+          },
+          box: it.box,
+          wt: it.box.wt,
+          title: "Item " + (i + 1),
+          color: ICSS[i]
+        })).filter(it => it.result && it.result.total > 0);
+      }
+      await buildAndSavePDF(items, cKey, today);
+    } catch (e) {
+      console.error(e);
+      alert('PDF generation failed: ' + e.message);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+  const handleWhSku = id => {
+    setWhSkuId(id);
+    const s = SKUS.find(x => x.id === id);
+    if (s && id !== "manual") setWhBox({
+      L: s.l,
+      W: s.w,
+      H: s.h,
+      wt: gwAvg(s)
+    });
+  };
+  const handleWhPalType = key => {
+    setWhPalKey(key);
+    const p = PAL_SPECS[key];
+    if (p) setWhPal({
+      ...p
+    });
+  };
+  const setWhS = k => v => setWhSettings(s => ({
+    ...s,
+    [k]: v
+  }));
+  const setWhBoxF = k => e => {
+    setWhSkuId("manual");
+    setWhBox(b => ({
+      ...b,
+      [k]: parseFloat(e.target.value) || 0
+    }));
+  };
 
   /* Three.js setup */
-  useEffect(()=>{
-    const el=mountRef.current;if(!el)return;
-    const three=buildScene(el,C);threeRef.current=three;
-    const{camera:cam3,renderer,cL,cH,cW}=three;
-    const updCam=()=>{
-      const{theta,phi,r}=camSt.current;
-      cam3.position.set(cL/2+r*Math.sin(phi)*Math.sin(theta),cH/2+r*Math.cos(phi),cW/2+r*Math.sin(phi)*Math.cos(theta));
-      cam3.lookAt(cL/2,cH/2,cW/2);
+  useEffect(() => {
+    const el = mountRef.current;
+    if (!el) return;
+    const three = buildScene(el, C);
+    threeRef.current = three;
+    const {
+      camera: cam3,
+      renderer,
+      cL,
+      cH,
+      cW
+    } = three;
+    const updCam = () => {
+      const {
+        theta,
+        phi,
+        r
+      } = camSt.current;
+      cam3.position.set(cL / 2 + r * Math.sin(phi) * Math.sin(theta), cH / 2 + r * Math.cos(phi), cW / 2 + r * Math.sin(phi) * Math.cos(theta));
+      cam3.lookAt(cL / 2, cH / 2, cW / 2);
     };
-    updCam();threeRef.current.updCam=updCam;
-    let fId;const tick=()=>{fId=requestAnimationFrame(tick);renderer.render(three.scene,cam3);};tick();
-    const hr=()=>{if(!mountRef.current)return;const w=mountRef.current.clientWidth,h=mountRef.current.clientHeight;renderer.setSize(w,h);cam3.aspect=w/h;cam3.updateProjectionMatrix();};
-    const cv=renderer.domElement;
-    const gxy=e=>({x:e.clientX!=null?e.clientX:e.touches&&e.touches[0]?e.touches[0].clientX:0,y:e.clientY!=null?e.clientY:e.touches&&e.touches[0]?e.touches[0].clientY:0});
-    const onDn=e=>{isDrag.current=true;pm.current=gxy(e);};
-    const onMv=e=>{if(!isDrag.current)return;const{x,y}=gxy(e);camSt.current.theta-=(x-pm.current.x)*0.007;camSt.current.phi=Math.max(0.12,Math.min(1.55,camSt.current.phi+(y-pm.current.y)*0.007));pm.current={x,y};updCam();};
-    const onUp=()=>{isDrag.current=false;};
-    const onWh=e=>{e.preventDefault();camSt.current.r=Math.max(8,Math.min(100,camSt.current.r+e.deltaY*0.025));updCam();};
-    cv.addEventListener("mousedown",onDn);cv.addEventListener("touchstart",onDn,{passive:true});
-    window.addEventListener("mousemove",onMv);window.addEventListener("touchmove",onMv,{passive:true});
-    window.addEventListener("mouseup",onUp);window.addEventListener("touchend",onUp);
-    cv.addEventListener("wheel",onWh,{passive:false});window.addEventListener("resize",hr);
-    return()=>{
+    updCam();
+    threeRef.current.updCam = updCam;
+    let fId;
+    const tick = () => {
+      fId = requestAnimationFrame(tick);
+      renderer.render(three.scene, cam3);
+    };
+    tick();
+    const hr = () => {
+      if (!mountRef.current) return;
+      const w = mountRef.current.clientWidth,
+        h = mountRef.current.clientHeight;
+      renderer.setSize(w, h);
+      cam3.aspect = w / h;
+      cam3.updateProjectionMatrix();
+    };
+    const cv = renderer.domElement;
+    const gxy = e => ({
+      x: e.clientX != null ? e.clientX : e.touches && e.touches[0] ? e.touches[0].clientX : 0,
+      y: e.clientY != null ? e.clientY : e.touches && e.touches[0] ? e.touches[0].clientY : 0
+    });
+    const onDn = e => {
+      isDrag.current = true;
+      pm.current = gxy(e);
+    };
+    const onMv = e => {
+      if (!isDrag.current) return;
+      const {
+        x,
+        y
+      } = gxy(e);
+      camSt.current.theta -= (x - pm.current.x) * 0.007;
+      camSt.current.phi = Math.max(0.12, Math.min(1.55, camSt.current.phi + (y - pm.current.y) * 0.007));
+      pm.current = {
+        x,
+        y
+      };
+      updCam();
+    };
+    const onUp = () => {
+      isDrag.current = false;
+    };
+    const onWh = e => {
+      e.preventDefault();
+      camSt.current.r = Math.max(8, Math.min(100, camSt.current.r + e.deltaY * 0.025));
+      updCam();
+    };
+    cv.addEventListener("mousedown", onDn);
+    cv.addEventListener("touchstart", onDn, {
+      passive: true
+    });
+    window.addEventListener("mousemove", onMv);
+    window.addEventListener("touchmove", onMv, {
+      passive: true
+    });
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
+    cv.addEventListener("wheel", onWh, {
+      passive: false
+    });
+    window.addEventListener("resize", hr);
+    return () => {
       cancelAnimationFrame(fId);
-      cv.removeEventListener("mousedown",onDn);cv.removeEventListener("touchstart",onDn);
-      window.removeEventListener("mousemove",onMv);window.removeEventListener("touchmove",onMv);
-      window.removeEventListener("mouseup",onUp);window.removeEventListener("touchend",onUp);
-      cv.removeEventListener("wheel",onWh);window.removeEventListener("resize",hr);
-      renderer.dispose();if(el.contains(cv))el.removeChild(cv);threeRef.current=null;
+      cv.removeEventListener("mousedown", onDn);
+      cv.removeEventListener("touchstart", onDn);
+      window.removeEventListener("mousemove", onMv);
+      window.removeEventListener("touchmove", onMv);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchend", onUp);
+      cv.removeEventListener("wheel", onWh);
+      window.removeEventListener("resize", hr);
+      renderer.dispose();
+      if (el.contains(cv)) el.removeChild(cv);
+      threeRef.current = null;
     };
-  },[cKey]);
-
-  useEffect(()=>{
-    const t=threeRef.current;if(!t)return;
+  }, [cKey]);
+  useEffect(() => {
+    const t = threeRef.current;
+    if (!t) return;
     clearDyn(t.scene);
-    layers3D.forEach(l=>addIM(t.scene,t.S,l.pos,l.color,l.gap));
-  },[layers3D]);
-
-  /* Handlers */
-  const handleSku=id=>{setSkuId(id);const s=SKUS.find(x=>x.id===id);if(s&&id!=="manual")setBox({L:s.l,W:s.w,H:s.h,wt:gwAvg(s)});};
-  const handlePalSku=id=>{setPalSkuId(id);const s=SKUS.find(x=>x.id===id);if(s&&id!=="manual")setPalBox({L:s.l,W:s.w,H:s.h,wt:gwAvg(s)});};
-  const handlePalType=key=>{setPalKey(key);if(key!=="Custom")setPalDims({...PALLETS[key]});};
-  const setMixSku=(idx,sid)=>{const s=SKUS.find(x=>x.id===sid)||SKUS[1];setMixItems(its=>its.map((it,i)=>i===idx?{...it,skuId:sid,box:{L:s.l,W:s.w,H:s.h,wt:gwAvg(s)}}:it));};
-  const setMixAlloc=(idx,val)=>setMixItems(its=>its.map((it,i)=>i===idx?{...it,allocLen:+val||0}:it));
-  const addMix=()=>{if(mixItems.length>=4)return;const rem=C.l-mixItems.reduce((s,i)=>s+i.allocLen,0);setMixItems(its=>[...its,{...mkItem("s12"),allocLen:Math.max(0,rem)}]);};
-  const delMix=idx=>{if(mixItems.length<=1)return;setMixItems(its=>its.filter((_,i)=>i!==idx));};
-  const autoBalance=()=>{const n=mixItems.length,each=Math.floor(C.l/n);setMixItems(its=>its.map((it,i)=>({...it,allocLen:i<n-1?each:C.l-each*(n-1)})));};
-  const setBoxF=k=>e=>{setSkuId("manual");setBox(b=>({...b,[k]:parseFloat(e.target.value)||0}));};
-  const setPalBoxF=k=>e=>setPalBox(b=>({...b,[k]:parseFloat(e.target.value)||0}));
-
-  const curSku=SKUS.find(s=>s.id===skuId);
-  const curPalSku=SKUS.find(s=>s.id===palSkuId);
-  const mixUsed=mixItems.reduce((s,i)=>s+i.allocLen,0);
-  const wtOk=summ.wt<=C.maxPay;
-
-  /* RENDER */
-  return(
-    <div style={{display:"flex",height:"100vh",background:"#080c12",color:"#e2e8f0",overflow:"hidden"}}>
-
-      {/* SIDEBAR */}
-      <div style={{width:sideOpen?"300px":"0",flexShrink:0,display:"flex",flexDirection:"column",
-        borderRight:sideOpen?"1px solid #111827":"none",overflowY:"auto",overflowX:"hidden",
-        transition:"width 0.25s ease",background:"#080c12"}}>
-        <div style={{minWidth:"300px"}}>
-
-          {/* Header */}
-          <div style={{padding:"12px 15px",background:"#0a0f18",borderBottom:"1px solid #111827"}}>
-            <div style={{fontSize:"9px",letterSpacing:"0.2em",color:"#0ea5e9",fontWeight:700}}>PVT FOODS INDUSTRIES</div>
-            <div style={{fontSize:"17px",fontWeight:900,color:"#f8fafc",letterSpacing:"-0.03em"}}>Container Loader</div>
-          </div>
-
-          {/* Mode Tabs */}
-          <div style={{display:"flex",borderBottom:"1px solid #111827",background:"#0a0f18"}}>
-            {[["single","📦 Single"],["pallet","🏗 Pallet"],["mix","🎨 Mix Load"]].map(([m,lbl])=>(
-              <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"9px 4px",border:"none",fontSize:"11px",fontWeight:600,cursor:"pointer",
-                background:mode===m?"#080c12":"transparent",
-                color:mode===m?"#4ade80":"#475569",
-                borderBottom:mode===m?"2px solid #4ade80":"2px solid transparent"}}>
-                {lbl}
-              </button>
-            ))}
-          </div>
-
-          <div style={{padding:"13px 15px"}}>
-
-            {/* Container (shared) */}
-            <FG label="Container">
-              <select value={cKey} onChange={e=>setCKey(e.target.value)} style={SEL}>
-                {Object.keys(CONT).map(k=><option key={k}>{k}</option>)}
-              </select>
-              <div style={{fontSize:"10px",color:"#334155",marginTop:"3px"}}>
-                {C.l.toLocaleString()}×{C.w}×{C.h}mm · payload {(C.maxPay/1000).toFixed(1)}t
-              </div>
-            </FG>
-
-            {/* ── SINGLE ── */}
-            {mode==="single"&&<>
-              <FG label="Product SKU">
-                <select value={skuId} onChange={e=>handleSku(e.target.value)} style={{...SEL,color:"#4ade80",fontWeight:600}}>
-                  {SKUS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <SkuChip sku={curSku}/>
-              </FG>
-              <FG label="Box Dimensions">
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px"}}>
-                  {[["L(mm)","L",box.L],["W(mm)","W",box.W],["H(mm)","H",box.H],["GW(kg)","wt",box.wt]].map(([lbl,k,v])=>(
-                    <div key={k}>
-                      <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>{lbl}</div>
-                      <input type="number" value={v} step={k==="wt"?0.01:1} onChange={setBoxF(k)} style={INP}/>
-                    </div>
-                  ))}
-                </div>
-              </FG>
-              <FG label="Loading Pattern">
-                {patterns.map(p=>{
-                  const isBest=p.r.total===Math.max(...patterns.map(x=>x.r.total));
-                  const sel=pid===p.id;
-                  return<div key={p.id} onClick={()=>setPid(p.id)}
-                    onMouseEnter={()=>setHov(p.id)} onMouseLeave={()=>setHov(null)}
-                    style={{padding:"8px 10px",marginBottom:"3px",borderRadius:"5px",cursor:"pointer",
-                      background:sel?"#052e16":hov===p.id?"#0f172a":"#0a0f18",
-                      border:"1px solid "+(sel?"#16a34a":hov===p.id?"#1e3a5f":"#111827"),
-                      display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div>
-                      <div style={{fontSize:"11px",fontWeight:600,color:sel?"#4ade80":"#cbd5e1",display:"flex",gap:"4px",alignItems:"center"}}>
-                        {p.name}
-                        {p.tag&&<span style={{fontSize:"8px",background:"#166534",color:"#86efac",padding:"1px 4px",borderRadius:"3px"}}>{p.tag}</span>}
-                        {isBest&&!p.tag&&<span style={{fontSize:"8px",background:"#1e3a5f",color:"#7dd3fc",padding:"1px 4px",borderRadius:"3px"}}>max</span>}
-                      </div>
-                      <div style={{fontSize:"9px",color:"#334155",marginTop:"1px"}}>{p.flat?"flat":"upright"} · {p.r.perLayer}/layer × {p.r.layers} layers</div>
-                    </div>
-                    <div style={{fontSize:"14px",fontWeight:800,color:sel?"#4ade80":isBest?"#7dd3fc":"#475569",marginLeft:"6px",fontVariantNumeric:"tabular-nums"}}>
-                      {fmt(p.r.total)}
-                    </div>
-                  </div>;
-                })}
-              </FG>
-            </>}
-
-            {/* ── PALLET ── */}
-            {mode==="pallet"&&<>
-              <FG label="Product SKU">
-                <select value={palSkuId} onChange={e=>handlePalSku(e.target.value)} style={{...SEL,color:"#4ade80",fontWeight:600}}>
-                  {SKUS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <SkuChip sku={curPalSku}/>
-              </FG>
-              <FG label="Box Dims">
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px"}}>
-                  {[["L(mm)","L",palBox.L],["W(mm)","W",palBox.W],["H(mm)","H",palBox.H],["GW(kg)","wt",palBox.wt]].map(([lbl,k,v])=>(
-                    <div key={k}>
-                      <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>{lbl}</div>
-                      <input type="number" value={v} step={k==="wt"?0.01:1} onChange={setPalBoxF(k)} style={INP}/>
-                    </div>
-                  ))}
-                </div>
-              </FG>
-              <FG label="Pallet Type">
-                <select value={palKey} onChange={e=>handlePalType(e.target.value)} style={SEL}>
-                  {Object.keys(PALLETS).map(k=><option key={k}>{k}</option>)}
-                </select>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px",marginTop:"7px"}}>
-                  {[["L(mm)","l",palDims.l],["W(mm)","w",palDims.w],["H(mm)","h",palDims.h]].map(([lbl,k,v])=>(
-                    <div key={k}>
-                      <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>{lbl}</div>
-                      <input type="number" value={v} onChange={e=>{setPalKey("Custom");setPalDims(d=>({...d,[k]:+e.target.value||0}));}} style={INP}/>
-                    </div>
-                  ))}
-                </div>
-              </FG>
-              {/* Pallet breakdown */}
-              <div style={{background:"#0a0f18",border:"1px solid #111827",borderRadius:"6px",padding:"10px",marginBottom:"14px"}}>
-                <div style={{fontSize:"9px",color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"8px"}}>Pallet Breakdown</div>
-                {[
-                  ["Grid ในตู้",palRes.palletsL+" × "+palRes.palletsW+" = "+palRes.totalPallets+" pallets"],
-                  ["กล่อง/ชั้น บน pallet",palRes.boxesPerLayer],
-                  ["ชั้น บน pallet",palRes.boxLayersH],
-                  ["กล่อง / pallet",palRes.boxesPerPallet],
-                  ["Total boxes",fmt(palRes.totalBoxes)],
-                ].map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:"4px",fontSize:"11px"}}>
-                  <span style={{color:"#475569"}}>{k}</span>
-                  <span style={{color:"#94a3b8",fontWeight:600,fontVariantNumeric:"tabular-nums"}}>{v}</span>
-                </div>)}
-              </div>
-            </>}
-
-            {/* ── MIX LOAD ── */}
-            {mode==="mix"&&<>
-              <FG label={"Mix Items ("+mixItems.length+"/4)"}
-                action={<div style={{display:"flex",gap:"4px"}}>
-                  <button onClick={autoBalance} style={{background:"#0a0f18",border:"1px solid #1e3a5f",borderRadius:"5px",color:"#7dd3fc",padding:"4px 8px",fontSize:"10px",cursor:"pointer"}}>⚖ Auto</button>
-                  <button onClick={addMix} disabled={mixItems.length>=4}
-                    style={{background:"#0a0f18",border:"1px solid #1e3a5f",borderRadius:"5px",color:mixItems.length>=4?"#334155":"#7dd3fc",padding:"4px 8px",fontSize:"10px",cursor:mixItems.length>=4?"not-allowed":"pointer"}}>+ Add</button>
-                </div>}>
-
-                {/* Allocation bar */}
-                <div style={{marginBottom:"10px"}}>
-                  <div style={{height:"6px",background:"#111827",borderRadius:"3px",overflow:"hidden",display:"flex"}}>
-                    {mixItems.map((it,i)=><div key={i} style={{width:((it.allocLen/C.l)*100)+"%",background:ICSS[i],transition:"width 0.2s",minWidth:it.allocLen>0?"2px":"0"}}/>)}
-                  </div>
-                  <div style={{fontSize:"9px",color:"#334155",marginTop:"3px",display:"flex",justifyContent:"space-between"}}>
-                    <span>Used: {fmt(mixUsed)}mm</span>
-                    <span style={{color:mixUsed>C.l?"#f87171":"#4ade80"}}>Remain: {fmt(Math.max(0,C.l-mixUsed))}mm</span>
-                  </div>
-                </div>
-
-                {mixItems.map((item,idx)=>(
-                  <div key={idx} style={{background:"#0a0f18",border:"1px solid "+ICSS[idx]+"44",borderRadius:"6px",padding:"10px",marginBottom:"8px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"7px"}}>
-                      <div style={{width:"10px",height:"10px",borderRadius:"2px",background:ICSS[idx],flexShrink:0}}/>
-                      <span style={{fontSize:"10px",fontWeight:700,color:ICSS[idx]}}>Item {idx+1}</span>
-                      <div style={{flex:1}}/>
-                      {mixItems.length>1&&<button onClick={()=>delMix(idx)}
-                        style={{background:"transparent",border:"1px solid #7f1d1d",borderRadius:"4px",color:"#ef4444",padding:"2px 7px",fontSize:"10px",cursor:"pointer"}}>×</button>}
-                    </div>
-                    <select value={item.skuId} onChange={e=>setMixSku(idx,e.target.value)}
-                      style={{...SEL,color:ICSS[idx],fontWeight:600,marginBottom:"7px",fontSize:"11px"}}>
-                      {SKUS.filter(s=>s.id!=="manual").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:"7px",alignItems:"flex-end"}}>
-                      <div>
-                        <div style={{fontSize:"9px",color:"#475569",marginBottom:"2px",textTransform:"uppercase"}}>Length (mm)</div>
-                        <input type="number" value={item.allocLen} onChange={e=>setMixAlloc(idx,e.target.value)} style={INP}/>
-                      </div>
-                      <div style={{textAlign:"right"}}>
-                        <div style={{fontSize:"9px",color:"#475569",textTransform:"uppercase",marginBottom:"2px"}}>Boxes</div>
-                        <div style={{fontSize:"18px",fontWeight:800,color:ICSS[idx],fontVariantNumeric:"tabular-nums",lineHeight:1}}>{fmt(mixRes[idx]?mixRes[idx].total:0)}</div>
-                      </div>
-                    </div>
-                    {mixRes[idx]&&mixRes[idx].total>0&&(
-                      <div style={{fontSize:"9px",color:"#334155",marginTop:"5px"}}>
-                        {mixRes[idx].perLayer}/layer × {mixRes[idx].layers} layers
-                        {" · "}{fmtD(mixRes[idx].total*item.box.wt/1000,2)}t
-                        {" · Box: "+item.box.L+"×"+item.box.W+"×"+item.box.H}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </FG>
-            </>}
-          </div>
-
-          {/* ── RESULT CARD ── */}
-          <div style={{padding:"13px 15px",borderTop:"1px solid #111827",background:"#060a10"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:"10px"}}>
-              <div>
-                <div style={{fontSize:"9px",letterSpacing:"0.18em",color:"#0ea5e9",fontWeight:700,textTransform:"uppercase"}}>Total Packages</div>
-                <div style={{fontSize:"42px",fontWeight:900,color:"#fff",lineHeight:1,letterSpacing:"-0.03em",fontVariantNumeric:"tabular-nums"}}>{fmt(summ.boxes)}</div>
-              </div>
-              <div style={{textAlign:"right",paddingBottom:"2px"}}>
-                <div style={{fontSize:"20px",fontWeight:800,lineHeight:1,fontVariantNumeric:"tabular-nums",
-                  color:wtOk?"#4ade80":"#f87171"}}>{fmtD(summ.wt/1000,2)}t</div>
-                <div style={{fontSize:"8px",color:"#334155",textTransform:"uppercase",marginTop:"2px"}}>gross weight</div>
-              </div>
-            </div>
-
-            {mode==="mix"&&(
-              <div style={{marginBottom:"8px"}}>
-                {mixItems.map((it,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:"10px",marginBottom:"3px",alignItems:"center"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:"5px"}}>
-                      <div style={{width:"7px",height:"7px",borderRadius:"1px",background:ICSS[i],flexShrink:0}}/>
-                      <span style={{color:"#64748b",fontSize:"9px"}}>{(SKUS.find(s=>s.id===it.skuId)||{name:"Item "+(i+1)}).name.substring(0,20)}</span>
-                    </div>
-                    <span style={{color:ICSS[i],fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmt(mixRes[i]?mixRes[i].total:0)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {mode==="pallet"&&(
-              <div style={{fontSize:"10px",color:"#475569",marginBottom:"8px"}}>
-                {palRes.totalPallets} pallets × {palRes.boxesPerPallet} boxes
-              </div>
-            )}
-
-            <div style={{fontSize:"10px",color:"#334155",marginBottom:"4px",display:"flex",justifyContent:"space-between"}}>
-              <span style={{fontVariantNumeric:"tabular-nums"}}>{fmt(summ.wt)} kg</span>
-              <span>max {fmt(C.maxPay)} kg</span>
-            </div>
-            <div style={{height:"3px",background:"#111827",borderRadius:"2px",overflow:"hidden",marginBottom:"6px"}}>
-              <div style={{height:"100%",width:Math.min(summ.wt/C.maxPay*100,100)+"%",background:wtOk?"#22c55e":"#ef4444",transition:"width 0.3s"}}/>
-            </div>
-            {!wtOk&&<div style={{padding:"6px 9px",background:"#2a0d0d",border:"1px solid #7f1d1d",borderRadius:"5px",fontSize:"10px",color:"#fca5a5"}}>
-              ⚠️ น้ำหนักรวม {fmt(summ.wt)} kg เกิน payload {fmt(C.maxPay)} kg
-            </div>}
-          </div>
-        </div>
-      </div>
-
-      {/* ── 3D VIEWPORT ── */}
-      <div ref={mountRef} style={{flex:1,position:"relative",overflow:"hidden",background:"#080c12"}}>
-        <button onClick={()=>setSide(s=>!s)} style={{
-          position:"absolute",top:10,left:10,zIndex:20,
-          background:"rgba(8,12,18,0.9)",border:"1px solid #1e3a5f",borderRadius:"6px",
-          color:"#4ade80",fontSize:"14px",width:"32px",height:"32px",cursor:"pointer",
-          display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {sideOpen?"◀":"▶"}
-        </button>
-        <div style={{position:"absolute",top:10,left:"50px",zIndex:10,
-          background:"rgba(8,12,18,0.85)",borderRadius:"7px",padding:"7px 12px",
-          fontSize:"11px",color:"#94a3b8",pointerEvents:"none",
-          border:"1px solid #111827",whiteSpace:"nowrap",overflow:"hidden",maxWidth:"calc(100% - 70px)"}}>
-          <span style={{color:"#4ade80",fontWeight:700}}>
-            {mode==="single"?actPat.name:mode==="pallet"?"Pallet Load":"Mix Load ("+mixItems.length+" items)"}
-          </span>
-          <span style={{color:"#1e3a5f",margin:"0 6px"}}>·</span>
-          <span style={{fontVariantNumeric:"tabular-nums"}}>{fmt(summ.boxes)} boxes</span>
-          <span style={{color:"#1e3a5f",margin:"0 6px"}}>·</span>
-          <span style={{color:wtOk?"#94a3b8":"#f87171",fontVariantNumeric:"tabular-nums"}}>{fmtD(summ.wt/1000,2)}t</span>
-        </div>
-        {mode==="mix"&&(
-          <div style={{position:"absolute",top:50,left:"50px",zIndex:10,
-            background:"rgba(8,12,18,0.85)",borderRadius:"6px",padding:"7px 10px",
-            fontSize:"10px",pointerEvents:"none",border:"1px solid #111827"}}>
-            {mixItems.map((it,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:i<mixItems.length-1?"3px":"0"}}>
-                <div style={{width:"8px",height:"8px",borderRadius:"2px",background:ICSS[i]}}/>
-                <span style={{color:"#64748b"}}>{(SKUS.find(s=>s.id===it.skuId)||{name:"?"}).name}</span>
-                <span style={{color:ICSS[i],fontWeight:700,marginLeft:"4px",fontVariantNumeric:"tabular-nums"}}>{fmt(mixRes[i]?mixRes[i].total:0)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {mode==="pallet"&&palRes.totalPallets>0&&(
-          <div style={{position:"absolute",top:50,left:"50px",zIndex:10,
-            background:"rgba(8,12,18,0.85)",borderRadius:"6px",padding:"7px 10px",
-            fontSize:"10px",pointerEvents:"none",border:"1px solid #111827",color:"#94a3b8"}}>
-            <div style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"3px"}}>
-              <div style={{width:"8px",height:"8px",borderRadius:"2px",background:"#d97706"}}/>
-              <span>{palRes.totalPallets} pallets ({palRes.palletsL}×{palRes.palletsW})</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
-              <div style={{width:"8px",height:"8px",borderRadius:"2px",background:"#22c55e"}}/>
-              <span>{fmt(palRes.totalBoxes)} boxes ({palRes.boxesPerPallet}/pallet)</span>
-            </div>
-          </div>
-        )}
-        <div style={{position:"absolute",bottom:10,right:12,zIndex:10,fontSize:"10px",color:"#1e3a5f",pointerEvents:"none"}}>
-          drag to rotate · scroll to zoom
-        </div>
-      </div>
-    </div>
-  );
+    layers3D.forEach(l => addIM(t.scene, t.S, l.pos, l.color, l.gap));
+  }, [layers3D]);
+  const handleSku = id => {
+    setSkuId(id);
+    const s = SKUS.find(x => x.id === id);
+    if (s && id !== "manual") setBox({
+      L: s.l,
+      W: s.w,
+      H: s.h,
+      wt: gwAvg(s)
+    });
+  };
+  const handlePalSku = id => {
+    setPalSkuId(id);
+    const s = SKUS.find(x => x.id === id);
+    if (s && id !== "manual") setPalBox({
+      L: s.l,
+      W: s.w,
+      H: s.h,
+      wt: gwAvg(s)
+    });
+  };
+  const handlePalType = key => {
+    setPalKey(key);
+    if (key !== "Custom") setPalDims({
+      ...PALLETS[key]
+    });
+  };
+  const setMixSku = (idx, sid) => {
+    const s = SKUS.find(x => x.id === sid) || SKUS[1];
+    setMixItems(its => its.map((it, i) => i === idx ? {
+      ...it,
+      skuId: sid,
+      box: {
+        L: s.l,
+        W: s.w,
+        H: s.h,
+        wt: gwAvg(s)
+      }
+    } : it));
+  };
+  const setMixAlloc = (idx, val) => setMixItems(its => its.map((it, i) => i === idx ? {
+    ...it,
+    allocLen: +val || 0
+  } : it));
+  const addMix = () => {
+    if (mixItems.length >= 4) return;
+    const rem = C.l - mixItems.reduce((s, i) => s + i.allocLen, 0);
+    setMixItems(its => [...its, {
+      ...mkItem("s12"),
+      allocLen: Math.max(0, rem)
+    }]);
+  };
+  const delMix = idx => {
+    if (mixItems.length <= 1) return;
+    setMixItems(its => its.filter((_, i) => i !== idx));
+  };
+  const autoBalance = () => {
+    const n = mixItems.length,
+      each = Math.floor(C.l / n);
+    setMixItems(its => its.map((it, i) => ({
+      ...it,
+      allocLen: i < n - 1 ? each : C.l - each * (n - 1)
+    })));
+  };
+  const setBoxF = k => e => {
+    setSkuId("manual");
+    setBox(b => ({
+      ...b,
+      [k]: parseFloat(e.target.value) || 0
+    }));
+  };
+  const setPalBoxF = k => e => setPalBox(b => ({
+    ...b,
+    [k]: parseFloat(e.target.value) || 0
+  }));
+  const mixUsed = mixItems.reduce((s, i) => s + i.allocLen, 0);
+  const wtOk = summ.wt <= C.maxPay;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      height: "100vh",
+      background: "#f5f7fa",
+      color: "#1e293b",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: sideOpen ? "310px" : "0",
+      flexShrink: 0,
+      display: "flex",
+      flexDirection: "column",
+      borderRight: "none",
+      boxShadow: sideOpen ? "2px 0 8px rgba(0,0,0,0.06)" : "none",
+      overflowY: "auto",
+      overflowX: "hidden",
+      transition: "width 0.25s ease",
+      background: "#f5f7fa"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: "300px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 15px",
+      background: "#ffffff",
+      borderBottom: "1px solid #e8edf2"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      letterSpacing: "0.2em",
+      color: "#2563eb",
+      fontWeight: 700
+    }
+  }, "PVT FOODS INDUSTRIES"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "17px",
+      fontWeight: 900,
+      color: "#0f172a",
+      letterSpacing: "-0.03em"
+    }
+  }, "Container Loader")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      borderBottom: "1px solid #e8edf2",
+      background: "#ffffff"
+    }
+  }, [["single", "\u{1F4E6} Single"], ["pallet", "\u{1F3D7} Pallet"], ["mix", "\u{1F3A8} Mix Load"], ["warehouse", "\u{1F3ED} Warehouse"]].map(([m, lbl]) => /*#__PURE__*/React.createElement("button", {
+    key: m,
+    onClick: () => setMode(m),
+    style: {
+      flex: 1,
+      padding: "9px 4px",
+      border: "none",
+      fontSize: "11px",
+      fontWeight: 600,
+      cursor: "pointer",
+      background: mode === m ? "#f5f7fa" : "transparent",
+      color: mode === m ? "#16a34a" : "#d1d5db",
+      borderBottom: mode === m ? "2px solid #2563eb" : "2px solid transparent"
+    }
+  }, lbl))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "13px 15px"
+    }
+  }, /*#__PURE__*/React.createElement(FG, {
+    label: "Container"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: cKey,
+    onChange: e => setCKey(e.target.value),
+    style: SEL
+  }, Object.keys(CONT).map(k => /*#__PURE__*/React.createElement("option", {
+    key: k
+  }, k))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "10px",
+      color: "#d1d5db",
+      marginTop: "3px"
+    }
+  }, C.l.toLocaleString(), "×", C.w, "×", C.h, "mm · payload ", (C.maxPay / 1000).toFixed(1), "t")), mode === "single" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(FG, {
+    label: "Product SKU"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: skuId,
+    onChange: e => handleSku(e.target.value),
+    style: {
+      ...SEL,
+      color: "#16a34a",
+      fontWeight: 600
+    }
+  }, SKUS.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.name))), /*#__PURE__*/React.createElement(SkuChip, {
+    sku: curSku
+  })), /*#__PURE__*/React.createElement(FG, {
+    label: "Box Dimensions"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "7px"
+    }
+  }, [["L(mm)", "L", box.L], ["W(mm)", "W", box.W], ["H(mm)", "H", box.H], ["GW(kg)", "wt", box.wt]].map(([lbl, k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: v,
+    step: k === "wt" ? 0.01 : 1,
+    onChange: setBoxF(k),
+    style: INP
+  }))))), /*#__PURE__*/React.createElement(FG, {
+    label: "Loading Pattern"
+  }, patterns.map(p => {
+    const isBest = p.r.total === Math.max(...patterns.map(x => x.r.total));
+    const sel = pid === p.id;
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.id,
+      onClick: () => setPid(p.id),
+      onMouseEnter: () => setHov(p.id),
+      onMouseLeave: () => setHov(null),
+      style: {
+        padding: "8px 10px",
+        marginBottom: "3px",
+        borderRadius: "5px",
+        cursor: "pointer",
+        background: sel ? "#dcfce7" : hov === p.id ? "#0f172a" : "#ffffff",
+        border: "1px solid " + (sel ? "#16a34a" : hov === p.id ? "#bae6fd" : "#e8edf2"),
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: "11px",
+        fontWeight: 600,
+        color: sel ? "#16a34a" : "#374151",
+        display: "flex",
+        gap: "4px",
+        alignItems: "center"
+      }
+    }, p.name, p.tag && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: "8px",
+        background: "#16a34a",
+        color: "#14532d",
+        padding: "1px 4px",
+        borderRadius: "3px"
+      }
+    }, p.tag), isBest && !p.tag && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: "8px",
+        background: "#e0f2fe",
+        color: "#1d4ed8",
+        padding: "1px 4px",
+        borderRadius: "3px"
+      }
+    }, "max")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: "9px",
+        color: "#d1d5db",
+        marginTop: "1px"
+      }
+    }, p.flat ? "flat" : "upright", " · ", p.r.perLayer, "/layer × ", p.r.layers, " layers")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: "14px",
+        fontWeight: 800,
+        color: sel ? "#16a34a" : isBest ? "#1d4ed8" : "#d1d5db",
+        marginLeft: "6px",
+        fontVariantNumeric: "tabular-nums"
+      }
+    }, fmt(p.r.total)));
+  }))), mode === "pallet" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(FG, {
+    label: "Product SKU"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: palSkuId,
+    onChange: e => handlePalSku(e.target.value),
+    style: {
+      ...SEL,
+      color: "#16a34a",
+      fontWeight: 600
+    }
+  }, SKUS.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.name))), /*#__PURE__*/React.createElement(SkuChip, {
+    sku: curPalSku
+  })), /*#__PURE__*/React.createElement(FG, {
+    label: "Box Dims"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "7px"
+    }
+  }, [["L(mm)", "L", palBox.L], ["W(mm)", "W", palBox.W], ["H(mm)", "H", palBox.H], ["GW(kg)", "wt", palBox.wt]].map(([lbl, k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: v,
+    step: k === "wt" ? 0.01 : 1,
+    onChange: setPalBoxF(k),
+    style: INP
+  }))))), /*#__PURE__*/React.createElement(FG, {
+    label: "Pallet Type"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: palKey,
+    onChange: e => handlePalType(e.target.value),
+    style: SEL
+  }, Object.keys(PALLETS).map(k => /*#__PURE__*/React.createElement("option", {
+    key: k
+  }, k))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: "6px",
+      marginTop: "7px"
+    }
+  }, [["L(mm)", "l", palDims.l], ["W(mm)", "w", palDims.w], ["H(mm)", "h", palDims.h]].map(([lbl, k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: v,
+    onChange: e => {
+      setPalKey("Custom");
+      setPalDims(d => ({
+        ...d,
+        [k]: +e.target.value || 0
+      }));
+    },
+    style: INP
+  }))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "6px",
+      padding: "10px",
+      marginBottom: "14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      textTransform: "uppercase",
+      letterSpacing: "0.1em",
+      marginBottom: "8px"
+    }
+  }, "Pallet Breakdown"), [["Grid", palRes.palletsL + "×" + palRes.palletsW + "=" + palRes.totalPallets + " pallets"], ["กล่อง/layer/pallet", palRes.boxesPerLayer], ["Layer บน pallet", palRes.boxLayersH], ["กล่อง/pallet", palRes.boxesPerPallet]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "4px",
+      fontSize: "11px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#d1d5db"
+    }
+  }, k), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#6b7280",
+      fontWeight: 600
+    }
+  }, v))))), mode === "warehouse" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(FG, {
+    label: "Product SKU"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: whSkuId,
+    onChange: e => handleWhSku(e.target.value),
+    style: {
+      ...SEL,
+      color: "#16a34a",
+      fontWeight: 600
+    }
+  }, SKUS.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.name))), /*#__PURE__*/React.createElement(SkuChip, {
+    sku: SKUS.find(s => s.id === whSkuId)
+  })), /*#__PURE__*/React.createElement(FG, {
+    label: "Box Dims (แก้ไขได้)"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "7px"
+    }
+  }, [["L(mm)", "L", whBox.L], ["W(mm)", "W", whBox.W], ["H(mm)", "H", whBox.H], ["GW(kg)", "wt", whBox.wt]].map(([lbl, k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: v,
+    step: k === "wt" ? 0.01 : 1,
+    onChange: setWhBoxF(k),
+    style: INP
+  }))))), /*#__PURE__*/React.createElement(FG, {
+    label: "Pallet Type"
+  }, /*#__PURE__*/React.createElement("select", {
+    value: whPalKey,
+    onChange: e => handleWhPalType(e.target.value),
+    style: SEL
+  }, Object.keys(PAL_SPECS).map(k => /*#__PURE__*/React.createElement("option", {
+    key: k
+  }, k))), whPal && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: "5px",
+      background: "#ffffff",
+      border: "1px solid #e8edf2",
+      borderRadius: "5px",
+      padding: "6px 9px",
+      fontSize: "10px"
+    }
+  }, [["L×W×H", whPal.l + "×" + whPal.w + "×" + whPal.h + "mm"], ["Static", whPal.staticKg + "kg"], ["Dynamic", whPal.dynKg + "kg"], ["Racking", whPal.rackKg + "kg"], ["Tare", whPal.tare + "kg"]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "2px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#d1d5db"
+    }
+  }, k), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: k === "Dynamic" ? "#fbbf24" : "#6b7280",
+      fontWeight: k === "Dynamic" ? 700 : 400
+    }
+  }, v))))), /*#__PURE__*/React.createElement(FG, {
+    label: "⚙ Warehouse Settings"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "7px",
+      marginBottom: "7px"
+    }
+  }, [["Max height (mm)", "maxHeight", whSettings.maxHeight], ["Floor load (kg/m²)", "floorLoad", whSettings.floorLoad]].map(([lbl, k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: v,
+    onChange: e => setWhS(k)(+e.target.value || 0),
+    style: INP
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "7px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#f59e0b",
+      marginBottom: "5px",
+      fontWeight: 600
+    }
+  }, "⚡ Handling frequency (dynamic load)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "5px"
+    }
+  }, Object.keys(HANDLE_FACTORS).map(k => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    onClick: () => setWhS("handleFreq")(k),
+    style: {
+      flex: 1,
+      padding: "6px 4px",
+      border: "none",
+      borderRadius: "5px",
+      fontSize: "10px",
+      cursor: "pointer",
+      fontWeight: 600,
+      background: whSettings.handleFreq === k ? "#92400e" : "#ffffff",
+      color: whSettings.handleFreq === k ? "#fde68a" : "#9ca3af",
+      border: "1px solid " + (whSettings.handleFreq === k ? "#fbbf24" : "#e8edf2")
+    }
+  }, k, /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: "8px",
+      opacity: 0.8
+    }
+  }, "×", HANDLE_FACTORS[k])))))), /*#__PURE__*/React.createElement(FG, {
+    label: "📦 Box Compression (BCT) — optional"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "7px"
+    }
+  }, [["BCT value (kg)", "bct", whSettings.bct], ["Safety factor", "compSF", whSettings.compSF]].map(([lbl, k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, lbl), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: v,
+    step: k === "compSF" ? 0.5 : 10,
+    onChange: e => setWhS(k)(e.target.value),
+    style: {
+      ...INP,
+      border: "1px solid #e0f2fe"
+    }
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginTop: "4px"
+    }
+  }, "SF แนะนำ: 4.5 (warehouse), 6.0 (transit)")), /*#__PURE__*/React.createElement(FG, {
+    label: "✏ Manual layer limit (optional)"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: whSettings.manualLayers,
+    onChange: e => setWhS("manualLayers")(e.target.value),
+    placeholder: "ไม่ระบุ = ไม่จำกัด",
+    style: {
+      ...INP,
+      border: "1px solid #e0f2fe"
+    }
+  }))), mode === "mix" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(FG, {
+    label: "Mix Items (" + mixItems.length + "/4)",
+    action: /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: "4px"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: autoBalance,
+      style: {
+        background: "#ffffff",
+        border: "1px solid #e0f2fe",
+        borderRadius: "5px",
+        color: "#1d4ed8",
+        padding: "4px 8px",
+        fontSize: "10px",
+        cursor: "pointer"
+      }
+    }, "⚖ Auto"), /*#__PURE__*/React.createElement("button", {
+      onClick: addMix,
+      disabled: mixItems.length >= 4,
+      style: {
+        background: "#ffffff",
+        border: "1px solid #e0f2fe",
+        borderRadius: "5px",
+        color: mixItems.length >= 4 ? "#d1d5db" : "#1d4ed8",
+        padding: "4px 8px",
+        fontSize: "10px",
+        cursor: mixItems.length >= 4 ? "not-allowed" : "pointer"
+      }
+    }, "+ Add"))
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: "6px",
+      background: "#e8edf2",
+      borderRadius: "3px",
+      overflow: "hidden",
+      display: "flex"
+    }
+  }, mixItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      width: it.allocLen / C.l * 100 + "%",
+      background: ICSS[i],
+      transition: "width 0.2s",
+      minWidth: it.allocLen > 0 ? "2px" : "0"
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginTop: "3px",
+      display: "flex",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Used: ", fmt(mixUsed), "mm"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: mixUsed > C.l ? "#dc2626" : "#16a34a"
+    }
+  }, "Remain: ", fmt(Math.max(0, C.l - mixUsed)), "mm"))), mixItems.map((item, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    style: {
+      background: "#ffffff",
+      border: "1px solid " + ICSS[idx] + "44",
+      borderRadius: "6px",
+      padding: "10px",
+      marginBottom: "8px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      marginBottom: "7px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "10px",
+      height: "10px",
+      borderRadius: "2px",
+      background: ICSS[idx],
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: "10px",
+      fontWeight: 700,
+      color: ICSS[idx]
+    }
+  }, "Item ", idx + 1), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), mixItems.length > 1 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => delMix(idx),
+    style: {
+      background: "transparent",
+      border: "1px solid #fecaca",
+      borderRadius: "4px",
+      color: "#dc2626",
+      padding: "2px 7px",
+      fontSize: "10px",
+      cursor: "pointer"
+    }
+  }, "×")), /*#__PURE__*/React.createElement("select", {
+    value: item.skuId,
+    onChange: e => setMixSku(idx, e.target.value),
+    style: {
+      ...SEL,
+      color: ICSS[idx],
+      fontWeight: 600,
+      marginBottom: "7px",
+      fontSize: "11px"
+    }
+  }, SKUS.filter(s => s.id !== "manual").map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.name))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "3fr 2fr",
+      gap: "7px",
+      alignItems: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginBottom: "2px",
+      textTransform: "uppercase"
+    }
+  }, "Length (mm)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: item.allocLen,
+    onChange: e => setMixAlloc(idx, e.target.value),
+    style: INP
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      textTransform: "uppercase",
+      marginBottom: "2px"
+    }
+  }, "Boxes"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "18px",
+      fontWeight: 800,
+      color: ICSS[idx],
+      fontVariantNumeric: "tabular-nums",
+      lineHeight: 1
+    }
+  }, fmt(mixRes[idx] ? mixRes[idx].total : 0)))), mixRes[idx] && mixRes[idx].total > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#d1d5db",
+      marginTop: "5px"
+    }
+  }, mixRes[idx].perLayer, "/layer × ", mixRes[idx].layers, " layers · ", fmtD(mixRes[idx].total * item.box.wt / 1000, 2), "t")))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "13px 15px",
+      borderTop: "2px solid #e8edf2",
+      background: "#f8fafc"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      marginBottom: "10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      letterSpacing: "0.18em",
+      color: "#2563eb",
+      fontWeight: 700,
+      textTransform: "uppercase"
+    }
+  }, "Total Packages"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "42px",
+      fontWeight: 900,
+      color: "#fff",
+      lineHeight: 1,
+      letterSpacing: "-0.03em",
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmt(summ.boxes))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right",
+      paddingBottom: "2px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "20px",
+      fontWeight: 800,
+      lineHeight: 1,
+      color: wtOk ? "#15803d" : "#dc2626",
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmtD(summ.wt / 1000, 2), "t"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "8px",
+      color: "#d1d5db",
+      textTransform: "uppercase",
+      marginTop: "2px"
+    }
+  }, "gross weight"))), mode === "mix" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "8px"
+    }
+  }, mixItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: "10px",
+      marginBottom: "3px",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "5px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "7px",
+      height: "7px",
+      borderRadius: "1px",
+      background: ICSS[i],
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#9ca3af",
+      fontSize: "9px"
+    }
+  }, (SKUS.find(s => s.id === it.skuId) || {
+    name: "Item " + (i + 1)
+  }).name.substring(0, 22))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: ICSS[i],
+      fontWeight: 700,
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmt(mixRes[i] ? mixRes[i].total : 0))))), mode === "pallet" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "10px",
+      color: "#d1d5db",
+      marginBottom: "8px"
+    }
+  }, palRes.totalPallets, " pallets × ", palRes.boxesPerPallet, " boxes/pallet"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "10px",
+      color: "#d1d5db",
+      marginBottom: "4px",
+      display: "flex",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmt(summ.wt), " kg"), /*#__PURE__*/React.createElement("span", null, "max ", fmt(C.maxPay), " kg")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: "4px",
+      background: "#e8edf2",
+      borderRadius: "2px",
+      overflow: "hidden",
+      marginBottom: "10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: "100%",
+      width: Math.min(summ.wt / C.maxPay * 100, 100) + "%",
+      background: wtOk ? "#15803d" : "#dc2626",
+      transition: "width 0.3s"
+    }
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: handlePDF,
+    disabled: pdfLoading || summ.boxes === 0,
+    style: {
+      width: "100%",
+      padding: "9px",
+      border: "none",
+      borderRadius: "6px",
+      cursor: pdfLoading || summ.boxes === 0 ? "not-allowed" : "pointer",
+      background: pdfLoading ? "#1a2433" : summ.boxes === 0 ? "#e8edf2" : "#1e3a2f",
+      color: pdfLoading ? "#9ca3af" : summ.boxes === 0 ? "#d1d5db" : "#16a34a",
+      fontSize: "12px",
+      fontWeight: 700,
+      letterSpacing: "0.05em",
+      border: "1px solid " + (pdfLoading ? "#e8edf2" : summ.boxes === 0 ? "#e8edf2" : "#16a34a"),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "6px"
+    }
+  }, pdfLoading ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-block",
+      animation: "spin 1s linear infinite"
+    }
+  }, "⏳"), "Generating PDF...") : /*#__PURE__*/React.createElement(React.Fragment, null, "📄 Download PDF Report")), /*#__PURE__*/React.createElement("style", null, `@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`), !wtOk && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "6px 9px",
+      background: "#fef2f2",
+      border: "1px solid #fecaca",
+      borderRadius: "5px",
+      fontSize: "10px",
+      color: "#dc2626",
+      marginTop: "8px"
+    }
+  }, "⚠️ น้ำหนักรวม ", fmt(summ.wt), " kg เกิน payload ", fmt(C.maxPay), " kg")))), mode === "warehouse" && /*#__PURE__*/React.createElement(WarehousePanel, {
+    wr: whRes,
+    box: whBox,
+    pal: whPal,
+    settings: whSettings
+  }), /*#__PURE__*/React.createElement("div", {
+    ref: mountRef,
+    style: {
+      flex: 1,
+      position: "relative",
+      overflow: "hidden",
+      background: "#1e293b",
+      display: mode === "warehouse" ? "none" : "flex"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSide(s => !s),
+    style: {
+      position: "absolute",
+      top: 10,
+      left: 10,
+      zIndex: 20,
+      background: "rgba(8,12,18,0.9)",
+      border: "1px solid #e0f2fe",
+      borderRadius: "6px",
+      color: "#16a34a",
+      fontSize: "14px",
+      width: "32px",
+      height: "32px",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, sideOpen ? "◀" : "▶"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 10,
+      left: "50px",
+      zIndex: 10,
+      background: "rgba(15,23,42,0.85)",
+      borderRadius: "7px",
+      padding: "7px 12px",
+      fontSize: "11px",
+      color: "#6b7280",
+      pointerEvents: "none",
+      border: "1px solid #e8edf2",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      maxWidth: "calc(100% - 70px)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#16a34a",
+      fontWeight: 700
+    }
+  }, mode === "single" ? actPat.name : mode === "pallet" ? "Pallet Load" : "Mix Load (" + mixItems.length + " items)"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#94a3b8",
+      margin: "0 6px"
+    }
+  }, "·"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmt(summ.boxes), " boxes"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#94a3b8",
+      margin: "0 6px"
+    }
+  }, "·"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: wtOk ? "#6b7280" : "#dc2626",
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmtD(summ.wt / 1000, 2), "t")), mode === "mix" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 50,
+      left: "50px",
+      zIndex: 10,
+      background: "rgba(15,23,42,0.85)",
+      borderRadius: "6px",
+      padding: "7px 10px",
+      fontSize: "10px",
+      pointerEvents: "none",
+      border: "1px solid #e8edf2"
+    }
+  }, mixItems.map((it, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      marginBottom: i < mixItems.length - 1 ? "3px" : "0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "8px",
+      height: "8px",
+      borderRadius: "2px",
+      background: ICSS[i]
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#9ca3af"
+    }
+  }, (SKUS.find(s => s.id === it.skuId) || {
+    name: "?"
+  }).name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: ICSS[i],
+      fontWeight: 700,
+      marginLeft: "4px",
+      fontVariantNumeric: "tabular-nums"
+    }
+  }, fmt(mixRes[i] ? mixRes[i].total : 0))))), mode === "pallet" && palRes.totalPallets > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 50,
+      left: "50px",
+      zIndex: 10,
+      background: "rgba(15,23,42,0.85)",
+      borderRadius: "6px",
+      padding: "7px 10px",
+      fontSize: "10px",
+      pointerEvents: "none",
+      border: "1px solid #e8edf2",
+      color: "#6b7280"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      marginBottom: "3px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "8px",
+      height: "8px",
+      borderRadius: "2px",
+      background: "#d97706"
+    }
+  }), /*#__PURE__*/React.createElement("span", null, palRes.totalPallets, " pallets (", palRes.palletsL, "×", palRes.palletsW, ")")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "8px",
+      height: "8px",
+      borderRadius: "2px",
+      background: "#15803d"
+    }
+  }), /*#__PURE__*/React.createElement("span", null, fmt(palRes.totalBoxes), " boxes (", palRes.boxesPerPallet, "/pallet)"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      bottom: 10,
+      right: 12,
+      zIndex: 10,
+      fontSize: "10px",
+      color: "#e0f2fe",
+      pointerEvents: "none"
+    }
+  }, "drag to rotate · scroll to zoom")));
 }
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
