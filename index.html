@@ -2,7 +2,10 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f5f7fa">
 <title>PVT Container Loader</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -10,14 +13,18 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body,#root{height:100%;overflow:hidden;}
-body{background:#f5f7fa;font-family:'Inter',system-ui,sans-serif;}
-::-webkit-scrollbar{width:5px;}
+html{-webkit-text-size-adjust:100%;}
+body{background:#f5f7fa;font-family:'Inter',system-ui,-apple-system,sans-serif;overscroll-behavior:none;}
+canvas{touch-action:none;display:block;}
+::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:#f1f5f9;}
 ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
 ::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
-select,input{outline:none;}
+select,input{outline:none;font-size:16px;}
+@media(min-width:768px){select,input{font-size:13px;}}
 select option{background:#ffffff;color:#0f172a;}
-button{font-family:inherit;}
+button{font-family:inherit;-webkit-tap-highlight-color:transparent;}
+input[type=number]{-moz-appearance:textfield;}
 @media print{
   body{overflow:visible;}
   #root>div>div:first-child{display:none!important;}
@@ -989,7 +996,7 @@ function WarehousePanel({
       flex: 1,
       background: "#f5f7fa",
       overflowY: "auto",
-      padding: "16px 20px"
+      padding: window.innerWidth < 768 ? "12px 10px" : "16px 20px"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1967,7 +1974,7 @@ function ReportPanel({
       flex: 1,
       overflowY: "auto",
       background: "#eef2f6",
-      padding: "20px 24px"
+      padding: window.innerWidth < 768 ? "12px 10px" : "20px 24px"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2028,6 +2035,12 @@ function ReportPanel({
 
 
 function App() {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const onR = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onR);
+    return () => window.removeEventListener("resize", onR);
+  }, []);
   const [mode, setModeRaw] = useState("single");
   const [prevMode, setPrevMode] = useState("single");
   const setMode = m => {
@@ -2375,6 +2388,7 @@ function App() {
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
+      flexDirection: isMobile ? "column" : "row",
       height: "100vh",
       background: "#f5f7fa",
       color: "#1e293b",
@@ -2382,20 +2396,22 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      width: sideOpen ? "310px" : "0",
+      width: isMobile ? "100%" : sideOpen ? "310px" : "0",
+      height: isMobile ? (sideOpen ? "55vh" : "0") : "auto",
       flexShrink: 0,
       display: "flex",
       flexDirection: "column",
       borderRight: "none",
-      boxShadow: sideOpen ? "2px 0 8px rgba(0,0,0,0.06)" : "none",
+      borderBottom: isMobile && sideOpen ? "2px solid #e2e8f0" : "none",
+      boxShadow: sideOpen ? (isMobile ? "0 2px 8px rgba(0,0,0,0.08)" : "2px 0 8px rgba(0,0,0,0.06)") : "none",
       overflowY: "auto",
       overflowX: "hidden",
-      transition: "width 0.25s ease",
+      transition: isMobile ? "height 0.25s ease" : "width 0.25s ease",
       background: "#f5f7fa"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      minWidth: "300px"
+      minWidth: isMobile ? "auto" : "300px"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3021,7 +3037,7 @@ function App() {
     }
   }, "Total Packages"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: "42px",
+      fontSize: isMobile ? "32px" : "42px",
       fontWeight: 900,
       color: "#fff",
       lineHeight: 1,
@@ -3162,18 +3178,19 @@ function App() {
       borderRadius: "6px",
       color: "#16a34a",
       fontSize: "14px",
-      width: "32px",
-      height: "32px",
+      width: isMobile ? "44px" : "32px",
+      height: isMobile ? "36px" : "32px",
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
       justifyContent: "center"
     }
-  }, sideOpen ? "◀" : "▶"), /*#__PURE__*/React.createElement("div", {
+  }, isMobile ? (sideOpen ? "▲" : "▼") : (sideOpen ? "◀" : "▶")), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
       top: 10,
-      left: "50px",
+      left: isMobile ? "62px" : "50px",
+      right: isMobile ? "8px" : "auto",
       zIndex: 10,
       background: "rgba(15,23,42,0.85)",
       borderRadius: "7px",
