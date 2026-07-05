@@ -18,6 +18,10 @@ body{background:#f5f7fa;font-family:'Inter',system-ui,sans-serif;}
 select,input{outline:none;}
 select option{background:#ffffff;color:#0f172a;}
 button{font-family:inherit;}
+@media print{
+  body{overflow:visible;}
+  #root>div>div:first-child{display:none!important;}
+}
 </style>
 </head>
 <body>
@@ -1424,8 +1428,612 @@ function SkuChip({
 }
 
 /* ── MAIN APP ────────────────────────────────────────────────────────────── */
+/* ── REPORT VIEWS (SP-WH-005 style) ─────────────────────────────────────── */
+function computeSlices(pos) {
+  if (!pos || !pos.length) return null;
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity,
+    maxX = 0,
+    maxY = 0,
+    maxZ = 0;
+  for (const p of pos) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.z < minZ) minZ = p.z;
+    if (p.x + p.sx > maxX) maxX = p.x + p.sx;
+    if (p.y + p.sy > maxY) maxY = p.y + p.sy;
+    if (p.z + p.sz > maxZ) maxZ = p.z + p.sz;
+  }
+  const front = pos.filter(p => p.x === minX);
+  const side = pos.filter(p => p.z === minZ);
+  const top = pos.filter(p => p.y === minY);
+  return {
+    front,
+    side,
+    top,
+    minX,
+    minY,
+    minZ,
+    maxX,
+    maxY,
+    maxZ
+  };
+}
+function SliceSVG({
+  boxes,
+  ax,
+  ay,
+  maxA,
+  maxB,
+  color,
+  label,
+  w,
+  h
+}) {
+  const sc = Math.min((w - 20) / maxA, (h - 20) / maxB);
+  const W = Math.round(maxA * sc) + 8,
+    H = Math.round(maxB * sc) + 8;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#6b7280",
+      fontWeight: 700,
+      letterSpacing: "0.08em",
+      marginBottom: "4px"
+    }
+  }, label), /*#__PURE__*/React.createElement("svg", {
+    width: W,
+    height: H,
+    style: {
+      display: "block",
+      margin: "0 auto",
+      border: "1px solid #cbd5e1",
+      background: "#fff"
+    }
+  }, boxes.map((p, i) => /*#__PURE__*/React.createElement("rect", {
+    key: i,
+    x: p[ax] * sc + 4,
+    y: H - 4 - (p[ay] + p["s" + ay.slice(0)] !== undefined ? 0 : 0) - (p[ay] + (ay === "y" ? p.sy : ay === "z" ? p.sz : p.sx)) * sc,
+    width: (ax === "x" ? p.sx : ax === "z" ? p.sz : p.sy) * sc - 0.6,
+    height: (ay === "y" ? p.sy : ay === "z" ? p.sz : p.sx) * sc - 0.6,
+    fill: color,
+    stroke: "#94a3b8",
+    strokeWidth: 0.4
+  }))));
+}
+function GridSlice({
+  boxes,
+  axA,
+  axB,
+  dimA,
+  dimB,
+  maxA,
+  maxB,
+  color,
+  label,
+  maxW,
+  maxH
+}) {
+  const sc = Math.min(maxW / maxA, maxH / maxB);
+  const W = Math.round(maxA * sc) + 8,
+    H = Math.round(maxB * sc) + 8;
+  const cells = boxes.map((p, i) => {
+    const a = p[axA],
+      b = p[axB];
+    const sa = axA === "x" ? p.sx : axA === "y" ? p.sy : p.sz;
+    const sb = axB === "x" ? p.sx : axB === "y" ? p.sy : p.sz;
+    return /*#__PURE__*/React.createElement("rect", {
+      key: i,
+      x: a * sc + 4,
+      y: H - 4 - (b + sb) * sc,
+      width: sa * sc - 0.7,
+      height: sb * sc - 0.7,
+      fill: color,
+      stroke: "#64748b",
+      strokeWidth: 0.4
+    });
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#475569",
+      fontWeight: 700,
+      letterSpacing: "0.1em",
+      marginBottom: "4px"
+    }
+  }, label), /*#__PURE__*/React.createElement("svg", {
+    width: W,
+    height: H,
+    style: {
+      display: "block",
+      margin: "0 auto",
+      border: "1.5px solid #94a3b8",
+      background: "#fff",
+      borderRadius: "2px"
+    }
+  }, cells), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "8px",
+      color: "#94a3b8",
+      marginTop: "2px"
+    }
+  }, Math.round(dimA), "×", Math.round(dimB), " mm"));
+}
+function Iso3D({
+  pos,
+  C,
+  color,
+  maxW,
+  maxH
+}) {
+  if (!pos || !pos.length) return null;
+  const s = computeSlices(pos);
+  const c30 = Math.cos(Math.PI / 6),
+    s30 = Math.sin(Math.PI / 6);
+  const iso = (x, y, z) => [(x - z) * c30, (x + z) * s30 - y];
+  // Project container corners to find bounds
+  const pts = [];
+  for (const X of [0, C.l]) for (const Y of [0, C.h]) for (const Z of [0, C.w]) pts.push(iso(X, Y, Z));
+  const xs = pts.map(p => p[0]),
+    ys = pts.map(p => p[1]);
+  const mnX = Math.min(...xs),
+    mxX = Math.max(...xs),
+    mnY = Math.min(...ys),
+    mxY = Math.max(...ys);
+  const sc = Math.min(maxW / (mxX - mnX), maxH / (mxY - mnY));
+  const P = (x, y, z) => {
+    const [a, b] = iso(x, y, z);
+    return (a - mnX) * sc + 6 + "," + ((b - mnY) * sc + 6);
+  };
+  const W = Math.round((mxX - mnX) * sc) + 12,
+    H = Math.round((mxY - mnY) * sc) + 12;
+  const {
+    maxX,
+    maxY,
+    maxZ
+  } = s;
+  // Unique grid boundaries
+  const uniq = arr => [...new Set(arr)].sort((a, b) => a - b);
+  const gx = uniq(pos.flatMap(p => [p.x, p.x + p.sx]));
+  const gy = uniq(pos.flatMap(p => [p.y, p.y + p.sy]));
+  const gz = uniq(pos.flatMap(p => [p.z, p.z + p.sz]));
+  const dark = color,
+    mid = shade(color, -15),
+    light = shade(color, 12);
+  function shade(hex, pct) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = (n >> 16) + Math.round(2.55 * pct),
+      g = (n >> 8 & 255) + Math.round(2.55 * pct),
+      b = (n & 255) + Math.round(2.55 * pct);
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+    return "#" + (r << 16 | g << 8 | b).toString(16).padStart(6, "0");
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "9px",
+      color: "#475569",
+      fontWeight: 700,
+      letterSpacing: "0.1em",
+      marginBottom: "4px"
+    }
+  }, "3D PERSPECTIVE"), /*#__PURE__*/React.createElement("svg", {
+    width: W,
+    height: H,
+    style: {
+      display: "block",
+      margin: "0 auto"
+    }
+  }, /*#__PURE__*/React.createElement("polygon", {
+    points: P(0, 0, 0) + " " + P(C.l, 0, 0) + " " + P(C.l, 0, C.w) + " " + P(0, 0, C.w),
+    fill: "#f8dfa8",
+    stroke: "#c9a227",
+    strokeWidth: 1
+  }), /*#__PURE__*/React.createElement("polyline", {
+    points: P(0, C.h, 0) + " " + P(C.l, C.h, 0) + " " + P(C.l, C.h, C.w) + " " + P(0, C.h, C.w) + " " + P(0, C.h, 0),
+    fill: "none",
+    stroke: "#cbd5e1",
+    strokeWidth: 1
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: P(0, 0, 0).split(",")[0],
+    y1: P(0, 0, 0).split(",")[1],
+    x2: P(0, C.h, 0).split(",")[0],
+    y2: P(0, C.h, 0).split(",")[1],
+    stroke: "#cbd5e1"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: P(C.l, 0, 0).split(",")[0],
+    y1: P(C.l, 0, 0).split(",")[1],
+    x2: P(C.l, C.h, 0).split(",")[0],
+    y2: P(C.l, C.h, 0).split(",")[1],
+    stroke: "#cbd5e1"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: P(C.l, 0, C.w).split(",")[0],
+    y1: P(C.l, 0, C.w).split(",")[1],
+    x2: P(C.l, C.h, C.w).split(",")[0],
+    y2: P(C.l, C.h, C.w).split(",")[1],
+    stroke: "#cbd5e1"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: P(0, 0, C.w).split(",")[0],
+    y1: P(0, 0, C.w).split(",")[1],
+    x2: P(0, C.h, C.w).split(",")[0],
+    y2: P(0, C.h, C.w).split(",")[1],
+    stroke: "#cbd5e1"
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: P(0, maxY, 0) + " " + P(maxX, maxY, 0) + " " + P(maxX, maxY, maxZ) + " " + P(0, maxY, maxZ),
+    fill: light,
+    stroke: "#fff",
+    strokeWidth: 0.5
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: P(0, 0, 0) + " " + P(maxX, 0, 0) + " " + P(maxX, maxY, 0) + " " + P(0, maxY, 0),
+    fill: mid,
+    stroke: "#fff",
+    strokeWidth: 0.5
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: P(maxX, 0, 0) + " " + P(maxX, 0, maxZ) + " " + P(maxX, maxY, maxZ) + " " + P(maxX, maxY, 0),
+    fill: dark,
+    stroke: "#fff",
+    strokeWidth: 0.5
+  }), gx.map((x, i) => /*#__PURE__*/React.createElement("polyline", {
+    key: "gx" + i,
+    points: P(x, 0, 0) + " " + P(x, maxY, 0),
+    fill: "none",
+    stroke: "rgba(255,255,255,0.55)",
+    strokeWidth: 0.5
+  })), gy.map((y, i) => /*#__PURE__*/React.createElement("polyline", {
+    key: "gy" + i,
+    points: P(0, y, 0) + " " + P(maxX, y, 0) + " " + P(maxX, y, maxZ),
+    fill: "none",
+    stroke: "rgba(255,255,255,0.55)",
+    strokeWidth: 0.5
+  })), gz.map((z, i) => /*#__PURE__*/React.createElement("polyline", {
+    key: "gz" + i,
+    points: P(maxX, 0, z) + " " + P(maxX, maxY, z),
+    fill: "none",
+    stroke: "rgba(255,255,255,0.55)",
+    strokeWidth: 0.5
+  })), gx.map((x, i) => /*#__PURE__*/React.createElement("polyline", {
+    key: "tx" + i,
+    points: P(x, maxY, 0) + " " + P(x, maxY, maxZ),
+    fill: "none",
+    stroke: "rgba(255,255,255,0.55)",
+    strokeWidth: 0.5
+  })), gz.map((z, i) => /*#__PURE__*/React.createElement("polyline", {
+    key: "tz" + i,
+    points: P(0, maxY, z) + " " + P(maxX, maxY, z),
+    fill: "none",
+    stroke: "rgba(255,255,255,0.55)",
+    strokeWidth: 0.5
+  }))));
+}
+function ReportBlock({
+  item,
+  C
+}) {
+  const {
+    name,
+    result,
+    box,
+    wt,
+    color,
+    title
+  } = item;
+  if (!result || !result.total) return null;
+  const s = computeSlices(result.pos);
+  if (!s) return null;
+  const vol = result.total * box.L * box.W * box.H / 1e9;
+  const totWt = Math.round(result.total * wt);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      border: "1px solid #cbd5e1",
+      borderRadius: "8px",
+      background: "#fff",
+      padding: "16px",
+      marginBottom: "16px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
+    }
+  }, title && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "11px",
+      fontWeight: 700,
+      color: color,
+      borderLeft: "3px solid " + color,
+      paddingLeft: "8px",
+      marginBottom: "12px"
+    }
+  }, title), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "20px",
+      flexWrap: "wrap",
+      alignItems: "flex-start"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "16px",
+      flexWrap: "wrap",
+      flex: "1 1 480px"
+    }
+  }, /*#__PURE__*/React.createElement(Iso3D, {
+    pos: result.pos,
+    C: C,
+    color: color,
+    maxW: 210,
+    maxH: 160
+  }), /*#__PURE__*/React.createElement(GridSlice, {
+    boxes: s.top,
+    axA: "x",
+    axB: "z",
+    dimA: s.maxX,
+    dimB: s.maxZ,
+    maxA: s.maxX,
+    maxB: s.maxZ,
+    color: color,
+    label: "TOP VIEW",
+    maxW: 200,
+    maxH: 110
+  }), /*#__PURE__*/React.createElement(GridSlice, {
+    boxes: s.front,
+    axA: "z",
+    axB: "y",
+    dimA: s.maxZ,
+    dimB: s.maxY,
+    maxA: s.maxZ,
+    maxB: s.maxY,
+    color: color,
+    label: "FRONT VIEW",
+    maxW: 120,
+    maxH: 140
+  }), /*#__PURE__*/React.createElement(GridSlice, {
+    boxes: s.side,
+    axA: "x",
+    axB: "y",
+    dimA: s.maxX,
+    dimB: s.maxY,
+    maxA: s.maxX,
+    maxB: s.maxY,
+    color: color,
+    label: "SIDE VIEW",
+    maxW: 220,
+    maxH: 140
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: "0 0 250px",
+      minWidth: "230px"
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    style: {
+      fontSize: "12px",
+      marginBottom: "12px",
+      borderCollapse: "collapse"
+    }
+  }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: "#64748b",
+      paddingRight: "10px",
+      paddingBottom: "4px"
+    }
+  }, "Total:"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontWeight: 700,
+      fontSize: "15px",
+      color: "#1d4ed8"
+    }
+  }, result.total.toLocaleString(), " packages")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: "#64748b",
+      paddingRight: "10px",
+      paddingBottom: "4px"
+    }
+  }, "Cargo volume:"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontWeight: 600,
+      color: "#1d4ed8"
+    }
+  }, vol.toFixed(1), " m³")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: "#64748b",
+      paddingRight: "10px"
+    }
+  }, "Cargo weight:"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontWeight: 600,
+      color: "#1d4ed8"
+    }
+  }, totWt.toLocaleString(), " kg")))), /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: "100%",
+      borderCollapse: "collapse",
+      fontSize: "11px"
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      borderBottom: "1.5px solid #cbd5e1",
+      borderTop: "1px solid #e2e8f0"
+    }
+  }, ["Name", "Packages", "Volume", "Weight"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "6px 4px",
+      textAlign: h === "Name" ? "left" : "right",
+      color: "#64748b",
+      fontWeight: 600
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 4px",
+      fontWeight: 600,
+      color: "#0f172a"
+    }
+  }, name), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 4px",
+      textAlign: "right",
+      color: "#0f172a"
+    }
+  }, result.total.toLocaleString()), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 4px",
+      textAlign: "right",
+      color: "#0f172a"
+    }
+  }, vol.toFixed(0), " m³"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "6px 4px",
+      textAlign: "right",
+      color: "#0f172a"
+    }
+  }, totWt.toLocaleString(), " kg")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "10px",
+      color: "#94a3b8",
+      marginTop: "10px",
+      lineHeight: 1.7
+    }
+  }, "Layer: ", result.perLayer, " boxes × ", result.layers, " layers", /*#__PURE__*/React.createElement("br", null), "Box: ", box.L, "×", box.W, "×", box.H, " mm · GW ", wt, " kg"))));
+}
+function ReportPanel({
+  mode0,
+  singRes,
+  actPat,
+  curSku,
+  box,
+  palRes,
+  palBox,
+  curPalSku,
+  mixItems,
+  mixRes,
+  cKey,
+  C
+}) {
+  const items = [];
+  if (mode0 === "pallet" && palRes && palRes.totalBoxes > 0) {
+    items.push({
+      name: curPalSku && curPalSku.id !== "manual" ? curPalSku.name : "Custom Box",
+      result: {
+        pos: palRes.pos,
+        total: palRes.totalBoxes,
+        perLayer: palRes.boxesPerLayer,
+        layers: palRes.boxLayersH
+      },
+      box: palBox,
+      wt: palBox.wt,
+      color: "#d97706",
+      title: "Pallet Load: " + palRes.palletsL + "×" + palRes.palletsW + " = " + palRes.totalPallets + " pallets"
+    });
+  } else if (mode0 === "mix") {
+    const cols = ["#22c55e", "#3b82f6", "#f97316", "#a855f7"];
+    mixItems.forEach((it, i) => {
+      const r = mixRes[i];
+      if (r && r.total > 0) {
+        const sku = SKUS.find(x => x.id === it.skuId);
+        items.push({
+          name: sku ? sku.name : "Item " + (i + 1),
+          result: r,
+          box: it.box,
+          wt: it.box.wt,
+          color: cols[i],
+          title: "Item " + (i + 1)
+        });
+      }
+    });
+  } else {
+    items.push({
+      name: curSku && curSku.id !== "manual" ? curSku.name : "Custom Box",
+      result: singRes,
+      box: box,
+      wt: box.wt,
+      color: "#16a34a",
+      title: actPat ? actPat.name : ""
+    });
+  }
+  const today = new Date().toLocaleDateString("en-GB");
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      overflowY: "auto",
+      background: "#eef2f6",
+      padding: "20px 24px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#fff",
+      border: "1px solid #cbd5e1",
+      borderRadius: "8px",
+      padding: "16px 20px",
+      marginBottom: "16px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      borderBottom: "2px solid #0f172a",
+      paddingBottom: "10px",
+      marginBottom: "8px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "15px",
+      fontWeight: 800,
+      color: "#0f172a"
+    }
+  }, "บริษัท พี.วี.ที. ฟู้ดส์ อินดัสตรีส์ จำกัด"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "13px",
+      fontWeight: 700,
+      color: "#1e293b",
+      marginTop: "2px"
+    }
+  }, "มาตรฐาน/ข้อกำหนดการบรรจุสินค้าเข้าตู้คอนเทนเนอร์")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: "10px",
+      color: "#64748b"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Container: ", cKey, " (", C.l.toLocaleString(), "×", C.w, "×", C.h, " mm)"), /*#__PURE__*/React.createElement("span", null, "Date: ", today), /*#__PURE__*/React.createElement("span", null, "SP-WH-005 Rev.00.05.06.18"))), items.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#94a3b8",
+      padding: "60px 0",
+      fontSize: "13px"
+    }
+  }, "ไม่มีข้อมูล — เลือกสินค้าใน mode อื่นก่อนแล้วกลับมาที่ Report") : items.map((it, i) => /*#__PURE__*/React.createElement(ReportBlock, {
+    key: i,
+    item: it,
+    C: C
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      fontSize: "10px",
+      color: "#94a3b8",
+      marginTop: "6px"
+    }
+  }, "💡 กด Ctrl+P / Cmd+P เพื่อพิมพ์หรือบันทึกเป็น PDF จาก browser โดยตรง"));
+}
+
+
 function App() {
-  const [mode, setMode] = useState("single");
+  const [mode, setModeRaw] = useState("single");
+  const [prevMode, setPrevMode] = useState("single");
+  const setMode = m => {
+    if (m !== "report" && m !== "warehouse") setPrevMode(m);
+    setModeRaw(m);
+  };
   const [cKey, setCKey] = useState("20ft Standard");
   const [sideOpen, setSide] = useState(true);
   const [skuId, setSkuId] = useState("s12");
@@ -1815,7 +2423,7 @@ function App() {
       borderBottom: "1px solid #e8edf2",
       background: "#ffffff"
     }
-  }, [["single", "\u{1F4E6} Single"], ["pallet", "\u{1F3D7} Pallet"], ["mix", "\u{1F3A8} Mix Load"], ["warehouse", "\u{1F3ED} Warehouse"]].map(([m, lbl]) => /*#__PURE__*/React.createElement("button", {
+  }, [["single", "\u{1F4E6} Single"], ["pallet", "\u{1F3D7} Pallet"], ["mix", "\u{1F3A8} Mix Load"], ["warehouse", "\u{1F3ED} Warehouse"], ["report", "\ud83d\udccb Report"]].map(([m, lbl]) => /*#__PURE__*/React.createElement("button", {
     key: m,
     onClick: () => setMode(m),
     style: {
@@ -2520,6 +3128,19 @@ function App() {
     box: whBox,
     pal: whPal,
     settings: whSettings
+  }), mode === "report" && /*#__PURE__*/React.createElement(ReportPanel, {
+    mode0: prevMode,
+    singRes: singRes,
+    actPat: actPat,
+    curSku: curSku,
+    box: box,
+    palRes: palRes,
+    palBox: palBox,
+    curPalSku: curPalSku,
+    mixItems: mixItems,
+    mixRes: mixRes,
+    cKey: cKey,
+    C: C
   }), /*#__PURE__*/React.createElement("div", {
     ref: mountRef,
     style: {
@@ -2527,7 +3148,7 @@ function App() {
       position: "relative",
       overflow: "hidden",
       background: "#1e293b",
-      display: mode === "warehouse" ? "none" : "flex"
+      display: mode === "warehouse" || mode === "report" ? "none" : "flex"
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setSide(s => !s),
