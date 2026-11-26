@@ -550,24 +550,54 @@ function calcMixLoad(
       return b.wt - a.wt;
     });
 
-    // Initialize result slots in original item order
     const results: any[] = new Array(items.length);
     let remainingPay = C.maxPay || 999999;
 
-    // Maintain a 2D heightmap across the container floor (grid resolution 10mm = 1cm)
-    // Even simpler & cleaner: we pack layer-by-layer across the FULL container floor (C.l x C.w),
-    // and when a SKU finishes its targetQty midway through a layer, the next SKU in the sorted priority
-    // continues filling the remaining rows (X) of that floor level before stepping up to the next Y layer!
-    let curY = 0; // current layer base height (mm)
-    let curX = 0; // current row X offset in the active layer (mm)
-    let currentLayerCeilingY = 0; // tracks highest box top in the current partially-filled layer
+    // 2D Surface Elevation Heightmap along container length X (1 mm resolution)
+    // Allows different SKUs of different box heights and dimensions to share the same layer & columns
+    // and rest directly on top of the actual surface below (Zero floating boxes / zero air gaps!)
+    const maxLenMm = Math.max(1, Math.ceil(C.l));
+    const heightMapX = new Float32Array(maxLenMm).fill(0);
+
+    // Helper: get maximum surface height Y across an X interval [xStart, xEnd)
+    const getSupportY = (xStart: number, xEnd: number): number => {
+      const s = Math.max(0, Math.floor(xStart));
+      const e = Math.min(maxLenMm - 1, Math.ceil(xEnd) - 1);
+      let maxY = 0;
+      for (let x = s; x <= e; x++) {
+        if (heightMapX[x] > maxY) maxY = heightMapX[x];
+      }
+      return maxY;
+    };
+
+    // Helper: update surface height Y across an X interval [xStart, xEnd)
+    const setSupportY = (xStart: number, xEnd: number, newTopY: number) => {
+      const s = Math.max(0, Math.floor(xStart));
+      const e = Math.min(maxLenMm - 1, Math.ceil(xEnd) - 1);
+      for (let x = s; x <= e; x++) {
+        if (newTopY > heightMapX[x]) heightMapX[x] = newTopY;
+      }
+    };
+
+    // Helper: generate 1D Z-row strips across container width C.w for a given pattern
+    const buildWidthRowTemplate = (L: number, W: number, H: number, pid: string) => {
+      const oneColPats = getPatterns({ l: Math.max(L, W) * 2, w: C.w, h: H }, L, W, H, 1, {
+        maxLayers: 1,
+      });
+      const pat = oneColPats.find((p) => p.id === pid) || oneColPats[0];
+      // Extract only the first column (x === 0) of each Z lane
+      const firstColBoxes = pat.r.pos
+        .filter((b) => b.x < 5)
+        .sort((a, b) => a.z - b.z);
+      return firstColBoxes;
+    };
 
     for (const entry of indexedItems) {
       const { item, origIdx } = entry;
       const { L, W, H, wt } = item.box;
       const selectedPid = item.pid || 'p3_3_2';
 
-      if (L <= 0 || W <= 0 || H <= 0 || curY + H > C.h) {
+      if (L <= 0 || W <= 0 || H <= 0) {
         results[origIdx] = {
           total: 0,
           maxGeoTotal: 0,
@@ -581,25 +611,20 @@ function calcMixLoad(
           wt,
           allocLen: C.l,
           pid: selectedPid,
-          stackOrder: origIdx + 1,
         };
         continue;
       }
 
-      // Generate a single full-floor layer template (1 layer high, full container length C.l and width C.w)
-      const fullFloorpats = getPatterns({ l: C.l, w: C.w, h: H }, L, W, H, wt, {
+      // Build full-floor single layer reference to know boxesPerFullLayer
+      const fullFloorPats = getPatterns({ l: C.l, w: C.w, h: H }, L, W, H, wt, {
         maxLayers: 1,
         spreadFloorFirst: true,
       });
-      const pat = fullFloorpats.find((p) => p.id === selectedPid) || fullFloorpats[0];
-      // Sort single-layer template boxes by X (front to back), then Z (left to right)
-      const singleLayerBoxes = [...pat.r.pos].sort((a, b) => {
-        if (Math.abs(a.x - b.x) > 4) return a.x - b.x;
-        return a.z - b.z;
-      });
+      const fullPat = fullFloorPats.find((p) => p.id === selectedPid) || fullFloorPats[0];
+      const boxesPerFullLayer = fullPat.r.pos.length;
 
-      const boxesPerFullLayer = singleLayerBoxes.length;
-      if (boxesPerFullLayer === 0) {
+      const rowTemplate = buildWidthRowTemplate(L, W, H, selectedPid);
+      if (rowTemplate.length === 0 || boxesPerFullLayer === 0) {
         results[origIdx] = {
           total: 0,
           maxGeoTotal: 0,
@@ -620,88 +645,119 @@ function calcMixLoad(
       const maxAllowedByWeight =
         autoStopOnWeight && wt > 0 ? Math.floor(remainingPay / wt) : Infinity;
 
-      // Default quantity when targetQty is 0 in vertical_layered mode:
-      // Allocate proportional layers so all items share vertical height, or use targetQty if specified
-      const defaultLayersForZero = Math.max(
-        1,
-        Math.floor((C.h / items.length) / H)
-      );
+      const defaultLayersForZero = Math.max(1, Math.floor(C.h / items.length / H));
       const desiredQty =
         item.targetQty && item.targetQty > 0
           ? item.targetQty
           : defaultLayersForZero * boxesPerFullLayer;
 
       const targetToPlace = Math.min(desiredQty, maxAllowedByWeight);
-
       const placedBoxes: VisualBox[] = [];
-      let layersUsed = 0;
 
-      // 1) First, if there is remaining floor length (curX > 0) on the current layer curY,
-      //    try to fill the remaining floor columns (x >= curX) on curY so the base floor is 100% utilized!
-      if (curX > 0 && curY + H <= C.h && placedBoxes.length < targetToPlace) {
-        const remFloorBoxes = singleLayerBoxes.filter((b) => b.x >= curX - 2);
-        let maxPlacedXInPartial = curX;
-        let placedAnyInPartial = false;
+      // We pack by always picking the lowest available elevation slice along X (so valleys/partial layers are filled first,
+      // and boxes always sit flush on the surface below without ever floating in mid-air!)
+      // Track independent X cursors for each Z-lane in rowTemplate within the current pass
+      let safetyPasses = 0;
+      const maxPasses = Math.ceil(C.h / Math.max(10, H)) + 50;
 
-        for (const b of remFloorBoxes) {
-          if (placedBoxes.length >= targetToPlace) break;
-          placedBoxes.push({
-            ...b,
-            y: curY,
-            wt,
-          });
-          placedAnyInPartial = true;
-          if (b.x + b.sx > maxPlacedXInPartial) {
-            maxPlacedXInPartial = b.x + b.sx;
+      while (placedBoxes.length < targetToPlace && safetyPasses < maxPasses) {
+        safetyPasses++;
+
+        // Find the minimum surface height Y across the container where at least one column of this SKU can fit
+        const minStepL = Math.min(...rowTemplate.map((b) => b.sx));
+        let minSurfaceY = Infinity;
+        let bestStartX = -1;
+
+        for (let x = 0; x <= C.l - minStepL; x += 10) {
+          const yHere = getSupportY(x, x + minStepL);
+          if (yHere + H <= C.h && yHere < minSurfaceY - 2) {
+            minSurfaceY = yHere;
+            bestStartX = x;
           }
         }
 
-        if (placedAnyInPartial) {
-          layersUsed++;
-          currentLayerCeilingY = Math.max(currentLayerCeilingY, curY + H);
-          curX = maxPlacedXInPartial;
-        }
-
-        // If we still need more boxes for this SKU, or no more space on this partial floor, step up to the next clean layer!
-        if (placedBoxes.length < targetToPlace || remFloorBoxes.length === 0) {
-          curY = currentLayerCeilingY > curY ? currentLayerCeilingY : curY + H;
-          curX = 0;
-          currentLayerCeilingY = curY;
-        }
-      }
-
-      // 2) Place full layers from x = 0 across the entire container floor (rows & columns) and stack upwards
-      while (placedBoxes.length < targetToPlace && curY + H <= C.h) {
-        let maxPlacedX = 0;
-        let countInThisLayer = 0;
-
-        for (const b of singleLayerBoxes) {
-          if (placedBoxes.length >= targetToPlace) break;
-          placedBoxes.push({
-            ...b,
-            y: curY,
-            wt,
-          });
-          countInThisLayer++;
-          if (b.x + b.sx > maxPlacedX) {
-            maxPlacedX = b.x + b.sx;
-          }
-        }
-
-        if (countInThisLayer > 0) {
-          layersUsed++;
-          currentLayerCeilingY = Math.max(currentLayerCeilingY, curY + H);
-        }
-
-        if (countInThisLayer === boxesPerFullLayer) {
-          // Completed a full floor layer! Move straight up to the next layer
-          curY += H;
-          curX = 0;
-          currentLayerCeilingY = curY;
-        } else {
-          // Partially filled this layer (reached desiredQty) — leave curX so the next lighter SKU can fill the rest of this layer or stack above!
-          curX = maxPlacedX;
+        if (bestStartX < 0 || minSurfaceY === Infinity) {
+          // Container ceiling reached everywhere!
           break;
+        }
+
+        // Find the contiguous X span starting at bestStartX that shares approximately this lowest elevation (tolerance 4mm)
+        // or if it's a step-down valley (like the leftover floor after a partial layer), fill across that valley first!
+        let spanEndX = C.l;
+        for (let x = bestStartX; x < C.l; x += 5) {
+          if (heightMapX[x] > minSurfaceY + 4) {
+            spanEndX = x;
+            break;
+          }
+        }
+
+        const spanLen = spanEndX - bestStartX;
+        if (spanLen < minStepL) {
+          // Span is too narrow for even 1 column of this box -> raise heightMapX in this narrow gap to match neighbor so we don't get stuck
+          const neighborY = spanEndX < C.l ? heightMapX[spanEndX] : C.h;
+          setSupportY(bestStartX, spanEndX, Math.max(minSurfaceY + 5, neighborY));
+          continue;
+        }
+
+        // Pack columns along X inside [bestStartX, spanEndX] column-by-column across the full width Z
+        // Group rowTemplate lanes by their box X-length (sx) so mixed patterns (3+3+2) advance cleanly
+        // Even better: advance column-by-column along X from bestStartX to spanEndX!
+        const laneCursorsX = rowTemplate.map(() => bestStartX);
+        let placedInThisSpan = 0;
+        let maxReachedX = bestStartX;
+
+        while (placedBoxes.length < targetToPlace) {
+          // Pick the lane with the smallest X cursor that can still fit a box before spanEndX
+          let bestLane = -1;
+          let minLaneX = Infinity;
+
+          for (let li = 0; li < rowTemplate.length; li++) {
+            const laneBox = rowTemplate[li];
+            const cx = laneCursorsX[li];
+            if (cx + laneBox.sx <= spanEndX + 2) {
+              if (cx < minLaneX) {
+                minLaneX = cx;
+                bestLane = li;
+              }
+            }
+          }
+
+          if (bestLane === -1) break; // Span filled!
+
+          const laneBox = rowTemplate[bestLane];
+          const bx = laneCursorsX[bestLane];
+          const baseSupportY = getSupportY(bx, bx + laneBox.sx);
+
+          if (baseSupportY + H <= C.h) {
+            placedBoxes.push({
+              x: bx,
+              y: baseSupportY,
+              z: laneBox.z,
+              sx: laneBox.sx,
+              sy: H,
+              sz: laneBox.sz,
+              wt,
+            });
+            placedInThisSpan++;
+            if (bx + laneBox.sx > maxReachedX) {
+              maxReachedX = bx + laneBox.sx;
+            }
+          }
+
+          laneCursorsX[bestLane] += laneBox.sx;
+        }
+
+        if (placedInThisSpan === 0) {
+          // Could not place in this span; level it up to avoid infinite loop
+          const nextY = spanEndX < C.l ? heightMapX[spanEndX] : C.h;
+          setSupportY(bestStartX, spanEndX, Math.max(minSurfaceY + H, nextY));
+        } else {
+          // Update heightMapX for the actual X interval covered by the newly placed boxes
+          setSupportY(bestStartX, maxReachedX, minSurfaceY + H);
+          // If the remainder of the span [maxReachedX, spanEndX) is narrower than minStepL, level it up to minSurfaceY + H so next layer is flat
+          if (spanEndX - maxReachedX > 0 && spanEndX - maxReachedX < minStepL) {
+            setSupportY(maxReachedX, spanEndX, minSurfaceY + H);
+          }
         }
       }
 
@@ -713,13 +769,15 @@ function calcMixLoad(
           ? item.targetQty - placedBoxes.length
           : 0;
 
+      const uniqueYLevels = new Set(placedBoxes.map((b) => Math.round(b.y / 10))).size;
+
       results[origIdx] = {
         total: placedBoxes.length,
         maxGeoTotal: boxesPerFullLayer * Math.floor(C.h / H),
         unpackedQty,
         pos: placedBoxes,
         perLayer: boxesPerFullLayer,
-        layers: layersUsed,
+        layers: uniqueYLevels,
         bl: L,
         bw: W,
         bh: H,
