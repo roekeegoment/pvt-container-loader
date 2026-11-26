@@ -1,0 +1,1 @@
+{"name":"Container \u0026 Pallet Loader","description":"ระบบคำนวณการจัดเรียงสินค้าในตู้คอนเทนเนอร์และพาเลท พร้อมทั้งบันทึกข้อมูลและประมวลผลผ่าน Google Drive","requestFramePermissions":[],"majorCapabilities":["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]}
