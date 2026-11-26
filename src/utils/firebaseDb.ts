@@ -25,6 +25,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+export type PackagingLoadClass = 'heavy_100' | 'medium_70' | 'light_40' | 'fragile_top';
+
 export interface SKUItem {
   id: string; // Firestore document ID or SKU code
   skuCode: string;
@@ -36,6 +38,59 @@ export interface SKUItem {
   category?: string;
   description?: string;
   lastUpdated?: string;
+  packagingType?: string; // e.g., '5-Ply Box (ลัง 5 ชั้น)', '3-Ply Box (ลัง 3 ชั้น)', 'Tray (ถาด)', 'Shrink Film (แพ็คฟิล์มหด)'
+  loadBearingPct?: number; // 100, 70, 40, 0 (%)
+  stackClass?: PackagingLoadClass;
+}
+
+export function inferPackagingSpecs(sku: Partial<SKUItem>): {
+  packagingType: string;
+  loadBearingPct: number;
+  stackClass: PackagingLoadClass;
+} {
+  if (sku.loadBearingPct !== undefined && sku.packagingType && sku.stackClass) {
+    return {
+      packagingType: sku.packagingType,
+      loadBearingPct: sku.loadBearingPct,
+      stackClass: sku.stackClass,
+    };
+  }
+  const cat = (sku.category || '').toLowerCase();
+  const nm = (sku.name || '').toLowerCase();
+
+  if (cat.includes('tray') || nm.includes('ถาด')) {
+    return {
+      packagingType: 'Tray / Open Pack (ถาดโชว์/ห้ามทับหนัก)',
+      loadBearingPct: 30,
+      stackClass: 'fragile_top',
+    };
+  }
+  if (cat.includes('shrink') || nm.includes('shrink') || nm.includes('ชิงค์')) {
+    return {
+      packagingType: 'Shrink Film Pack (แพ็คฟิล์มหด)',
+      loadBearingPct: 50,
+      stackClass: 'light_40',
+    };
+  }
+  if (nm.includes('5 ชั้น') || nm.includes('แข็งแรง') || (sku.weight && sku.weight >= 18)) {
+    return {
+      packagingType: '5-Ply Heavy Carton (ลังลูกฟูก 5 ชั้น แข็งแรง 100%)',
+      loadBearingPct: 100,
+      stackClass: 'heavy_100',
+    };
+  }
+  if (cat.includes('sq') || (sku.weight && sku.weight < 9)) {
+    return {
+      packagingType: '3-Ply Standard Carton (ลังลูกฟูก 3 ชั้น มาตรฐาน)',
+      loadBearingPct: 75,
+      stackClass: 'medium_70',
+    };
+  }
+  return {
+    packagingType: 'Standard Export Carton (ลังมาตรฐานส่งออก 100%)',
+    loadBearingPct: 100,
+    stackClass: 'heavy_100',
+  };
 }
 
 const SKU_COLLECTION_NAME = 'skus';
@@ -92,6 +147,9 @@ export async function getSKUs(): Promise<SKUItem[]> {
         category: data.category || '',
         description: data.description || '',
         lastUpdated: data.lastUpdated || '',
+        packagingType: data.packagingType || undefined,
+        loadBearingPct: data.loadBearingPct !== undefined ? Number(data.loadBearingPct) : undefined,
+        stackClass: data.stackClass || undefined,
       });
     });
     
@@ -126,6 +184,9 @@ export async function saveSKU(sku: Omit<SKUItem, 'id'> & { id?: string }): Promi
       weight: Number(sku.weight),
       category: sku.category || '',
       description: sku.description || '',
+      packagingType: sku.packagingType || '',
+      loadBearingPct: sku.loadBearingPct !== undefined ? Number(sku.loadBearingPct) : 100,
+      stackClass: sku.stackClass || 'heavy_100',
       lastUpdated: new Date().toISOString(),
     };
 
@@ -180,6 +241,9 @@ export function listenToSKUs(onUpdate: (skus: SKUItem[]) => void) {
         category: data.category || '',
         description: data.description || '',
         lastUpdated: data.lastUpdated || '',
+        packagingType: data.packagingType || undefined,
+        loadBearingPct: data.loadBearingPct !== undefined ? Number(data.loadBearingPct) : undefined,
+        stackClass: data.stackClass || undefined,
       });
     });
     // Merge with default SKUs

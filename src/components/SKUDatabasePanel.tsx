@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { saveSKU, deleteSKU, listenToSKUs, fetchGoogleSheetSKUs, SKUItem } from '../utils/firebaseDb';
+import { saveSKU, deleteSKU, listenToSKUs, fetchGoogleSheetSKUs, SKUItem, inferPackagingSpecs, PackagingLoadClass } from '../utils/firebaseDb';
 import { solveCartonPacking, CartonPackingResult } from '../utils/packingSolver';
 import { Database, FileSpreadsheet, Plus, Trash2, Edit3, RefreshCw, Search, Box, CheckCircle, AlertCircle, Shield, Scale, Clock, Thermometer, Info, HelpCircle, ArrowUpRight } from 'lucide-react';
 
@@ -89,6 +89,9 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
   const [skuWeight, setSkuWeight] = useState<number>(6.26);
   const [skuCategory, setSkuCategory] = useState<string>('SQ');
   const [skuDescription, setSkuDescription] = useState<string>('');
+  const [skuPackagingType, setSkuPackagingType] = useState<string>('Standard Export Carton (ลังมาตรฐานส่งออก 100%)');
+  const [skuLoadBearingPct, setSkuLoadBearingPct] = useState<number>(100);
+  const [skuStackClass, setSkuStackClass] = useState<PackagingLoadClass>('heavy_100');
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   // Google Sheet Sync State
@@ -186,6 +189,9 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
         weight: skuWeight,
         category: skuCategory,
         description: skuDescription,
+        packagingType: skuPackagingType,
+        loadBearingPct: skuLoadBearingPct,
+        stackClass: skuStackClass,
       });
 
       // Clear Form
@@ -205,6 +211,7 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
 
   // Handle Edit filling
   const handleEditSKU = (sku: SKUItem) => {
+    const inferred = inferPackagingSpecs(sku);
     setEditingId(sku.id);
     setSkuCode(sku.skuCode);
     setSkuName(sku.name);
@@ -214,6 +221,9 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
     setSkuWeight(sku.weight);
     setSkuCategory(sku.category || 'General');
     setSkuDescription(sku.description || '');
+    setSkuPackagingType(inferred.packagingType);
+    setSkuLoadBearingPct(inferred.loadBearingPct);
+    setSkuStackClass(inferred.stackClass);
   };
 
   // Handle Delete SKU
@@ -483,6 +493,52 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
                     ))}
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">ประเภทบรรจุภัณฑ์ (Packaging Design)</label>
+                      <select
+                        value={skuStackClass}
+                        onChange={(e) => {
+                          const cls = e.target.value as PackagingLoadClass;
+                          setSkuStackClass(cls);
+                          if (cls === 'heavy_100') {
+                            setSkuLoadBearingPct(100);
+                            setSkuPackagingType('5-Ply Heavy Carton (ลังลูกฟูก 5 ชั้น แข็งแรง 100%)');
+                          } else if (cls === 'medium_70') {
+                            setSkuLoadBearingPct(75);
+                            setSkuPackagingType('3-Ply Standard Carton (ลังลูกฟูก 3 ชั้น มาตรฐาน)');
+                          } else if (cls === 'light_40') {
+                            setSkuLoadBearingPct(50);
+                            setSkuPackagingType('Shrink Film Pack (แพ็คฟิล์มหด)');
+                          } else {
+                            setSkuLoadBearingPct(30);
+                            setSkuPackagingType('Tray / Open Pack (ถาดโชว์/ห้ามทับหนัก)');
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-700 outline-none"
+                      >
+                        <option value="heavy_100">🛡️ ลังแข็งแรงพิเศษ 5 ชั้น (รับน้ำหนักฐาน 100%)</option>
+                        <option value="medium_70">📦 ลังมาตรฐาน 3 ชั้น (รับน้ำหนักปานกลาง 75%)</option>
+                        <option value="light_40">🎞️ แพ็คฟิล์มหด Shrink Film (รับแรงกด 50%)</option>
+                        <option value="fragile_top">⚠️ ถาด Tray / เปราะบาง (วางชั้นบนสุด 30%)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">พิกัดรับน้ำหนักกดทับ (% Load Bearing)</label>
+                      <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={skuLoadBearingPct}
+                          onChange={(e) => setSkuLoadBearingPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                          className="w-full bg-transparent text-xs font-extrabold text-teal-700 text-center outline-none"
+                        />
+                        <span className="text-xs font-bold text-slate-400">%</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">คำอธิบายเพิ่มเติม</label>
                     <textarea
@@ -568,7 +624,7 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
                       <th className="p-3">ชื่อสินค้าภาษาไทย</th>
                       <th className="p-3 text-center">ขนาด (L×W×H)</th>
                       <th className="p-3 text-center">น.น. (กก.)</th>
-                      <th className="p-3 text-center">หมวดหมู่</th>
+                      <th className="p-3 text-center">การออกแบบบรรจุภัณฑ์ / รับน้ำหนัก</th>
                       <th className="p-3 text-right">จัดการ</th>
                     </tr>
                   </thead>
@@ -604,9 +660,27 @@ export const SKUDatabasePanel: React.FC<SKUDatabasePanelProps> = ({ onSelectedSk
                           </td>
                           <td className="p-3 text-center text-slate-800 font-bold font-mono">{sku.weight}</td>
                           <td className="p-3 text-center">
-                            <span className="bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                              {sku.category || 'General'}
-                            </span>
+                            {(() => {
+                              const inf = inferPackagingSpecs(sku);
+                              const badgeColor =
+                                inf.loadBearingPct >= 100
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  : inf.loadBearingPct >= 70
+                                  ? 'bg-sky-100 text-sky-800 border-sky-200'
+                                  : inf.loadBearingPct >= 50
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                  : 'bg-rose-100 text-rose-800 border-rose-200';
+                              return (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className={`border font-extrabold px-2 py-0.5 rounded-full text-[10px] ${badgeColor}`}>
+                                    รับแรงกด {inf.loadBearingPct}% ({sku.category || 'Std'})
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 truncate max-w-[140px]">
+                                    {inf.packagingType}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="p-3 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                             <button

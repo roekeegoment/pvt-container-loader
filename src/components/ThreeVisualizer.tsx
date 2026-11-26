@@ -212,10 +212,10 @@ export const ThreeVisualizer: React.FC<ThreeVisualizerProps> = ({ container, lay
 
     return transformedLayers.map((l) => {
       if (!l.pos || l.pos.length === 0) return l;
-      // Sort boxes in loading sequence: X (front to back), then Y (bottom to top), then Z (left to right)
+      // Sort boxes in loading sequence: Y (bottom to top layers), then X (front to back), then Z (left to right)
       const sorted = [...l.pos].sort((a, b) => {
-        if (Math.abs(a.x - b.x) > 5) return a.x - b.x;
         if (Math.abs(a.y - b.y) > 5) return a.y - b.y;
+        if (Math.abs(a.x - b.x) > 5) return a.x - b.x;
         return a.z - b.z;
       });
       const takeCount = Math.max(1, Math.floor((sorted.length * stepProgress) / 100));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { listenToSKUs, SKUItem } from './utils/firebaseDb';
+import { listenToSKUs, SKUItem, inferPackagingSpecs, PackagingLoadClass } from './utils/firebaseDb';
 import { ThreeVisualizer, VisualBox, CoGData } from './components/ThreeVisualizer';
 import { WarehousePanel } from './components/WarehousePanel';
 import { ReportPanel } from './components/ReportPanel';
@@ -20,9 +20,10 @@ import {
   Scale,
   Box,
   RotateCw,
-  Sliders,
   Sparkles,
   Truck,
+  Shield,
+  ArrowUpDown,
 } from 'lucide-react';
 
 /* ── PRESETS ─────────────────────────────────────────────────────────────── */
@@ -107,12 +108,50 @@ const HANDLE_FACTORS: Record<string, number> = {
 const ICOLS = [0x14b8a6, 0x3b82f6, 0xf59e0b, 0xa855f7, 0xec4899, 0x10b981];
 const ICSS = ["#14b8a6", "#3b82f6", "#f59e0b", "#a855f7", "#ec4899", "#10b981"];
 
+export const PACKAGING_CLASSES: {
+  id: PackagingLoadClass;
+  label: string;
+  shortLabel: string;
+  loadBearingPct: number;
+  badgeClass: string;
+}[] = [
+  {
+    id: 'heavy_100',
+    label: '🛡️ ลังแข็งแรง 5 ชั้น / ลังไม้ (รับน้ำหนัก 100% · วางฐานล่างสุด)',
+    shortLabel: 'รับน้ำหนัก 100% (ฐานล่าง)',
+    loadBearingPct: 100,
+    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  },
+  {
+    id: 'medium_70',
+    label: '📦 ลังมาตรฐาน 3 ชั้น (รับน้ำหนัก 75% · วางชั้นกลาง/ฐาน)',
+    shortLabel: 'รับน้ำหนัก 75% (ชั้นกลาง)',
+    loadBearingPct: 75,
+    badgeClass: 'bg-sky-100 text-sky-800 border-sky-300',
+  },
+  {
+    id: 'light_40',
+    label: '🎞️ แพ็คฟิล์มหด Shrink Film (รับแรงกด 50% · วางด้านบน)',
+    shortLabel: 'รับน้ำหนัก 50% (วางบน)',
+    loadBearingPct: 50,
+    badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+  },
+  {
+    id: 'fragile_top',
+    label: '⚠️ ถาด Tray / เปราะบาง (รับแรงกด ≤30% · วางบนสุดเท่านั้น)',
+    shortLabel: 'เปราะบาง ≤30% (บนสุด)',
+    loadBearingPct: 30,
+    badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
+  },
+];
+
 /* ── SEARATES-STYLE PACKING & CONSTRAINTS UTILITIES ───────────────────────── */
 interface PackingConstraints {
   maxPayKg?: number;
   targetQty?: number; // 0 or undefined = Fill to max capacity
   maxLayers?: number; // 0 or undefined = Full height
   autoStopOnWeight?: boolean;
+  spreadFloorFirst?: boolean; // Fill floor base (rows & columns) first, then stack layer by layer upwards!
 }
 
 function applyPackingLimits(
@@ -130,11 +169,20 @@ function applyPackingLimits(
     return { pos: rawPos, maxGeoTotal, limitedBy: 'volume', unpackedQty: 0 };
   }
 
-  // Sort in loading order: X (front to back), then Y (bottom to top), then Z (left to right)
+  // Sort order depends on whether "Spread Floor Base First (กระจายเต็มพื้นตู้ก่อนซ้อนชั้น)" is enabled:
+  // - If spreadFloorFirst is true: sort by Y (layer height 0 -> H) first, then X (length), then Z (width).
+  // - Otherwise (Wall/Block build): sort by X (front to back), then Y (bottom to top), then Z (left to right).
+  const spreadFloor = constraints.spreadFloorFirst ?? true;
   const sorted = [...rawPos].sort((a, b) => {
-    if (Math.abs(a.x - b.x) > 4) return a.x - b.x;
-    if (Math.abs(a.y - b.y) > 4) return a.y - b.y;
-    return a.z - b.z;
+    if (spreadFloor) {
+      if (Math.abs(a.y - b.y) > 4) return a.y - b.y;
+      if (Math.abs(a.x - b.x) > 4) return a.x - b.x;
+      return a.z - b.z;
+    } else {
+      if (Math.abs(a.x - b.x) > 4) return a.x - b.x;
+      if (Math.abs(a.y - b.y) > 4) return a.y - b.y;
+      return a.z - b.z;
+    }
   });
 
   const maxAllowedByWeight =
@@ -184,8 +232,8 @@ function calcUniform(
     nh = Math.min(nh, maxLayers);
   }
   const pos: VisualBox[] = [];
-  for (let li = 0; li < nl; li++) {
-    for (let hi = 0; hi < nh; hi++) {
+  for (let hi = 0; hi < nh; hi++) {
+    for (let li = 0; li < nl; li++) {
       for (let wi = 0; wi < nw; wi++) {
         pos.push({
           x: li * bl,
@@ -228,8 +276,8 @@ function calcMixed(
     const nl = Math.max(0, Math.floor(C.l / bl));
     for (let r = 0; r < n && z + bw <= C.w + 8; r++) {
       perLayer += nl;
-      for (let li = 0; li < nl; li++) {
-        for (let hi = 0; hi < nh; hi++) {
+      for (let hi = 0; hi < nh; hi++) {
+        for (let li = 0; li < nl; li++) {
           pos.push({
             x: li * bl,
             y: hi * bh,
@@ -314,12 +362,17 @@ function getPatterns(
   return basePatterns.map((p) => {
     const raw = p.calc();
     const limited = applyPackingLimits(raw.pos, wt, constraints);
+    const activeLayers =
+      limited.pos.length > 0 && raw.perLayer > 0
+        ? Math.ceil(limited.pos.length / raw.perLayer)
+        : 0;
     return {
       ...p,
       r: {
         ...raw,
         pos: limited.pos.map((b) => ({ ...b, wt })),
         total: limited.pos.length,
+        layers: activeLayers,
         maxGeoTotal: limited.maxGeoTotal,
         limitedBy: limited.limitedBy,
         unpackedQty: limited.unpackedQty,
@@ -456,24 +509,244 @@ function calcPalletLoad(
   );
 }
 
+export interface MixCargoItemInput {
+  skuId: string;
+  box: { L: number; W: number; H: number; wt: number };
+  allocLen: number;
+  targetQty?: number;
+  pid?: string;
+  stackClass?: PackagingLoadClass;
+  loadBearingPct?: number;
+  packagingType?: string;
+}
+
+/**
+ * Multi-SKU Container Stuffing Solver
+ * Supports 2 distinct engineering strategies:
+ * 1) 'horizontal_zones': Traditional front-to-back zones along container length (with optional full-floor spreading inside each zone)
+ * 2) 'vertical_layered': Full-floor footprint base first! Spreads cargo across the full container floor (rows & columns),
+ *    placing 100% load-bearing & heavier items on the bottom layers, and lighter / lower load-bearing items on upper layers!
+ */
 function calcMixLoad(
   C: { l: number; w: number; h: number; maxPay?: number },
-  items: {
-    skuId: string;
-    box: { L: number; W: number; H: number; wt: number };
-    allocLen: number;
-    targetQty?: number;
-    pid?: string;
-  }[],
-  autoStopOnWeight: boolean = true
+  items: MixCargoItemInput[],
+  autoStopOnWeight: boolean = true,
+  strategy: 'vertical_layered' | 'horizontal_zones' = 'vertical_layered',
+  spreadFloorFirst: boolean = true
 ) {
+  if (strategy === 'vertical_layered') {
+    // Sort items by stacking priority:
+    // 1. Higher loadBearingPct first (100% on bottom, <100% on top)
+    // 2. Heavier box weight (wt) on bottom, lighter on top
+    const indexedItems = items.map((item, origIdx) => ({
+      item,
+      origIdx,
+      loadBearing: item.loadBearingPct ?? 100,
+      wt: item.box.wt || 0,
+    }));
+
+    indexedItems.sort((a, b) => {
+      if (b.loadBearing !== a.loadBearing) return b.loadBearing - a.loadBearing;
+      return b.wt - a.wt;
+    });
+
+    // Initialize result slots in original item order
+    const results: any[] = new Array(items.length);
+    let remainingPay = C.maxPay || 999999;
+
+    // Maintain a 2D heightmap across the container floor (grid resolution 10mm = 1cm)
+    // Even simpler & cleaner: we pack layer-by-layer across the FULL container floor (C.l x C.w),
+    // and when a SKU finishes its targetQty midway through a layer, the next SKU in the sorted priority
+    // continues filling the remaining rows (X) of that floor level before stepping up to the next Y layer!
+    let curY = 0; // current layer base height (mm)
+    let curX = 0; // current row X offset in the active layer (mm)
+    let currentLayerCeilingY = 0; // tracks highest box top in the current partially-filled layer
+
+    for (const entry of indexedItems) {
+      const { item, origIdx } = entry;
+      const { L, W, H, wt } = item.box;
+      const selectedPid = item.pid || 'p3_3_2';
+
+      if (L <= 0 || W <= 0 || H <= 0 || curY + H > C.h) {
+        results[origIdx] = {
+          total: 0,
+          maxGeoTotal: 0,
+          unpackedQty: item.targetQty || 0,
+          pos: [] as VisualBox[],
+          perLayer: 0,
+          layers: 0,
+          bl: L,
+          bw: W,
+          bh: H,
+          wt,
+          allocLen: C.l,
+          pid: selectedPid,
+          stackOrder: origIdx + 1,
+        };
+        continue;
+      }
+
+      // Generate a single full-floor layer template (1 layer high, full container length C.l and width C.w)
+      const fullFloorpats = getPatterns({ l: C.l, w: C.w, h: H }, L, W, H, wt, {
+        maxLayers: 1,
+        spreadFloorFirst: true,
+      });
+      const pat = fullFloorpats.find((p) => p.id === selectedPid) || fullFloorpats[0];
+      // Sort single-layer template boxes by X (front to back), then Z (left to right)
+      const singleLayerBoxes = [...pat.r.pos].sort((a, b) => {
+        if (Math.abs(a.x - b.x) > 4) return a.x - b.x;
+        return a.z - b.z;
+      });
+
+      const boxesPerFullLayer = singleLayerBoxes.length;
+      if (boxesPerFullLayer === 0) {
+        results[origIdx] = {
+          total: 0,
+          maxGeoTotal: 0,
+          unpackedQty: item.targetQty || 0,
+          pos: [] as VisualBox[],
+          perLayer: 0,
+          layers: 0,
+          bl: L,
+          bw: W,
+          bh: H,
+          wt,
+          allocLen: C.l,
+          pid: selectedPid,
+        };
+        continue;
+      }
+
+      const maxAllowedByWeight =
+        autoStopOnWeight && wt > 0 ? Math.floor(remainingPay / wt) : Infinity;
+
+      // Default quantity when targetQty is 0 in vertical_layered mode:
+      // Allocate proportional layers so all items share vertical height, or use targetQty if specified
+      const defaultLayersForZero = Math.max(
+        1,
+        Math.floor((C.h / items.length) / H)
+      );
+      const desiredQty =
+        item.targetQty && item.targetQty > 0
+          ? item.targetQty
+          : defaultLayersForZero * boxesPerFullLayer;
+
+      const targetToPlace = Math.min(desiredQty, maxAllowedByWeight);
+
+      const placedBoxes: VisualBox[] = [];
+      let layersUsed = 0;
+
+      // 1) First, if there is remaining floor length (curX > 0) on the current layer curY,
+      //    try to fill the remaining floor columns (x >= curX) on curY so the base floor is 100% utilized!
+      if (curX > 0 && curY + H <= C.h && placedBoxes.length < targetToPlace) {
+        const remFloorBoxes = singleLayerBoxes.filter((b) => b.x >= curX - 2);
+        let maxPlacedXInPartial = curX;
+        let placedAnyInPartial = false;
+
+        for (const b of remFloorBoxes) {
+          if (placedBoxes.length >= targetToPlace) break;
+          placedBoxes.push({
+            ...b,
+            y: curY,
+            wt,
+          });
+          placedAnyInPartial = true;
+          if (b.x + b.sx > maxPlacedXInPartial) {
+            maxPlacedXInPartial = b.x + b.sx;
+          }
+        }
+
+        if (placedAnyInPartial) {
+          layersUsed++;
+          currentLayerCeilingY = Math.max(currentLayerCeilingY, curY + H);
+          curX = maxPlacedXInPartial;
+        }
+
+        // If we still need more boxes for this SKU, or no more space on this partial floor, step up to the next clean layer!
+        if (placedBoxes.length < targetToPlace || remFloorBoxes.length === 0) {
+          curY = currentLayerCeilingY > curY ? currentLayerCeilingY : curY + H;
+          curX = 0;
+          currentLayerCeilingY = curY;
+        }
+      }
+
+      // 2) Place full layers from x = 0 across the entire container floor (rows & columns) and stack upwards
+      while (placedBoxes.length < targetToPlace && curY + H <= C.h) {
+        let maxPlacedX = 0;
+        let countInThisLayer = 0;
+
+        for (const b of singleLayerBoxes) {
+          if (placedBoxes.length >= targetToPlace) break;
+          placedBoxes.push({
+            ...b,
+            y: curY,
+            wt,
+          });
+          countInThisLayer++;
+          if (b.x + b.sx > maxPlacedX) {
+            maxPlacedX = b.x + b.sx;
+          }
+        }
+
+        if (countInThisLayer > 0) {
+          layersUsed++;
+          currentLayerCeilingY = Math.max(currentLayerCeilingY, curY + H);
+        }
+
+        if (countInThisLayer === boxesPerFullLayer) {
+          // Completed a full floor layer! Move straight up to the next layer
+          curY += H;
+          curX = 0;
+          currentLayerCeilingY = curY;
+        } else {
+          // Partially filled this layer (reached desiredQty) — leave curX so the next lighter SKU can fill the rest of this layer or stack above!
+          curX = maxPlacedX;
+          break;
+        }
+      }
+
+      const groupWeight = placedBoxes.length * wt;
+      remainingPay = Math.max(0, remainingPay - groupWeight);
+
+      const unpackedQty =
+        item.targetQty && item.targetQty > placedBoxes.length
+          ? item.targetQty - placedBoxes.length
+          : 0;
+
+      results[origIdx] = {
+        total: placedBoxes.length,
+        maxGeoTotal: boxesPerFullLayer * Math.floor(C.h / H),
+        unpackedQty,
+        pos: placedBoxes,
+        perLayer: boxesPerFullLayer,
+        layers: layersUsed,
+        bl: L,
+        bw: W,
+        bh: H,
+        wt,
+        allocLen: C.l,
+        pid: selectedPid,
+      };
+    }
+
+    return results;
+  }
+
+  // Fallback / Mode B: Horizontal Front-to-Back Zones (with optional auto-expand to fill front door space & floor-first spreading)
   const results = [];
   let curX = 0;
   let remainingPay = C.maxPay || 999999;
 
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     const { L, W, H, wt } = item.box;
-    const subLen = item.allocLen || 0;
+    // If spreadFloorFirst is true and this is the last item or has targetQty, let it use all remaining container length up to C.l so no empty front door gap is wasted!
+    const remainingContainerLen = Math.max(0, C.l - curX);
+    const subLen =
+      spreadFloorFirst && (i === items.length - 1 || (item.targetQty && item.targetQty > 0))
+        ? Math.max(item.allocLen || 0, remainingContainerLen)
+        : item.allocLen || 0;
+
     if (subLen <= 0) {
       results.push({
         total: 0,
@@ -494,12 +767,12 @@ function calcMixLoad(
       maxPayKg: remainingPay,
       targetQty: item.targetQty,
       autoStopOnWeight,
+      spreadFloorFirst,
     });
     const selectedPid = item.pid || 'p3_3_2';
     const actPat = itemPats.find((p) => p.id === selectedPid) || itemPats[0];
     const r = actPat.r;
 
-    // Offset positions by curX and advance curX by actual occupied length
     let maxSubX = 0;
     const offsetPos = r.pos.map((p: VisualBox) => {
       if (p.x + p.sx > maxSubX) maxSubX = p.x + p.sx;
@@ -528,8 +801,7 @@ function calcMixLoad(
       pid: selectedPid,
     });
 
-    // If targetQty was used and didn't fill the whole subLen, advance curX tightly so next cargo packs flush!
-    curX += item.targetQty && item.targetQty > 0 && maxSubX > 0 ? maxSubX : subLen;
+    curX += maxSubX > 0 ? maxSubX : subLen;
   }
   return results;
 }
@@ -714,10 +986,13 @@ export default function App() {
 
   // Global SeaRates Stuffing Rules
   const [autoStopOnWeight, setAutoStopOnWeight] = useState<boolean>(true);
+  const [spreadFloorFirst, setSpreadFloorFirst] = useState<boolean>(true);
 
   // 1. Single SKU Mode States
   const [skuId, setSkuId] = useState<string>('s12');
   const [box, setBox] = useState({ L: 348, W: 262, H: 95, wt: 6.26 });
+  const [singleStackClass, setSingleStackClass] = useState<PackagingLoadClass>('medium_70');
+  const [singleLoadBearingPct, setSingleLoadBearingPct] = useState<number>(75);
   const [singleTargetQty, setSingleTargetQty] = useState<number>(0); // 0 = Max Fill
   const [singleMaxLayers, setSingleMaxLayers] = useState<number>(0); // 0 = Unlimited
   const [allowTilt, setAllowTilt] = useState<boolean>(false);
@@ -732,22 +1007,29 @@ export default function App() {
   const [targetPalletCount, setTargetPalletCount] = useState<number>(0); // 0 = Max Fill
 
   // 3. Multi-SKU Mix Mode States
-  const [mixItems, setMixItems] = useState<any[]>(() => {
+  const [mixStrategy, setMixStrategy] = useState<'vertical_layered' | 'horizontal_zones'>('vertical_layered');
+  const [mixItems, setMixItems] = useState<MixCargoItemInput[]>(() => {
     const C0 = CONT["20ft Standard"];
     return [
-      {
-        skuId: "s12",
-        box: { L: 348, W: 262, H: 95, wt: 6.26 },
-        allocLen: Math.floor(C0.l / 2),
-        targetQty: 0,
-        pid: "p3_3_2",
-      },
       {
         skuId: "s2",
         box: { L: 410, W: 306, H: 243, wt: 23.6 },
         allocLen: Math.floor(C0.l / 2),
-        targetQty: 0,
+        targetQty: 500,
         pid: "p3_3_2",
+        stackClass: "heavy_100",
+        loadBearingPct: 100,
+        packagingType: "5-Ply Heavy Carton (รับน้ำหนัก 100%)",
+      },
+      {
+        skuId: "s12",
+        box: { L: 348, W: 262, H: 95, wt: 6.26 },
+        allocLen: Math.floor(C0.l / 2),
+        targetQty: 800,
+        pid: "p3_3_2",
+        stackClass: "medium_70",
+        loadBearingPct: 75,
+        packagingType: "3-Ply Standard Carton (รับน้ำหนัก 75%)",
       },
     ];
   });
@@ -786,12 +1068,15 @@ export default function App() {
     if (id === 'manual') return;
     const s = skus.find((x) => x.id === id);
     if (s) {
+      const inf = inferPackagingSpecs(s);
       setBox({
         L: Math.round(s.length * 10),
         W: Math.round(s.width * 10),
         H: Math.round(s.height * 10),
         wt: s.weight,
       });
+      setSingleStackClass(inf.stackClass);
+      setSingleLoadBearingPct(inf.loadBearingPct);
     }
   };
 
@@ -842,6 +1127,7 @@ export default function App() {
 
   const setMixSku = (idx: number, sid: string) => {
     const s = skus.find((x) => x.id === sid);
+    const inf = s ? inferPackagingSpecs(s) : null;
     setMixItems((its) =>
       its.map((it, i) =>
         i === idx
@@ -856,6 +1142,48 @@ export default function App() {
                     wt: s.weight,
                   }
                 : it.box,
+              stackClass: inf ? inf.stackClass : it.stackClass,
+              loadBearingPct: inf ? inf.loadBearingPct : it.loadBearingPct,
+              packagingType: inf ? inf.packagingType : it.packagingType,
+            }
+          : it
+      )
+    );
+  };
+
+  const setMixPackagingClass = (idx: number, cls: PackagingLoadClass) => {
+    const preset = PACKAGING_CLASSES.find((c) => c.id === cls) || PACKAGING_CLASSES[0];
+    setMixItems((its) =>
+      its.map((it, i) =>
+        i === idx
+          ? {
+              ...it,
+              stackClass: cls,
+              loadBearingPct: preset.loadBearingPct,
+              packagingType: preset.label,
+            }
+          : it
+      )
+    );
+  };
+
+  const setMixLoadBearingPct = (idx: number, pct: number) => {
+    const clamped = Math.min(100, Math.max(0, pct));
+    const stackClass: PackagingLoadClass =
+      clamped >= 100
+        ? 'heavy_100'
+        : clamped >= 70
+        ? 'medium_70'
+        : clamped >= 45
+        ? 'light_40'
+        : 'fragile_top';
+    setMixItems((its) =>
+      its.map((it, i) =>
+        i === idx
+          ? {
+              ...it,
+              loadBearingPct: clamped,
+              stackClass,
             }
           : it
       )
@@ -874,6 +1202,18 @@ export default function App() {
     );
   };
 
+  // Sort mixItems list in UI by Load-Bearing % (100% bottom first) & Weight (heavy bottom, light top)
+  const sortMixItemsByLoadAndWeight = () => {
+    setMixItems((its) =>
+      [...its].sort((a, b) => {
+        const lbA = a.loadBearingPct ?? 100;
+        const lbB = b.loadBearingPct ?? 100;
+        if (lbB !== lbA) return lbB - lbA;
+        return (b.box.wt || 0) - (a.box.wt || 0);
+      })
+    );
+  };
+
   // Auto-allocate container length based on target quantities or equal split
   const autoAllocateMixByQty = () => {
     const hasQty = mixItems.some((it) => it.targetQty && it.targetQty > 0);
@@ -889,7 +1229,6 @@ export default function App() {
       return;
     }
 
-    // Weight allocation by requested volume of each group
     const vols = mixItems.map((it) => {
       const q = it.targetQty && it.targetQty > 0 ? it.targetQty : 200;
       return q * ((it.box.L * it.box.W * it.box.H) / 1e9);
@@ -913,14 +1252,17 @@ export default function App() {
     const n = mixItems.length + 1;
     const each = Math.floor(C.l / n);
     setMixItems((its) => {
-      const next = [
+      const next: MixCargoItemInput[] = [
         ...its,
         {
-          skuId: "s12",
-          box: { L: 348, W: 262, H: 95, wt: 6.26 },
+          skuId: "s6",
+          box: { L: 355, W: 260, H: 65, wt: 8.0 },
           allocLen: each,
-          targetQty: 0,
+          targetQty: 400,
           pid: "p3_3_2",
+          stackClass: "fragile_top",
+          loadBearingPct: 30,
+          packagingType: "Tray / Open Pack (ถาดโชว์/วางบนสุด)",
         },
       ];
       return next.map((it, i) => ({
@@ -944,8 +1286,9 @@ export default function App() {
         maxLayers: singleMaxLayers,
         autoStopOnWeight,
         allowTilt,
+        spreadFloorFirst,
       }),
-    [C, box.L, box.W, box.H, box.wt, singleTargetQty, singleMaxLayers, autoStopOnWeight, allowTilt]
+    [C, box.L, box.W, box.H, box.wt, singleTargetQty, singleMaxLayers, autoStopOnWeight, allowTilt, spreadFloorFirst]
   );
 
   const actPat = useMemo(() => patterns.find((p) => p.id === pid) || patterns[0], [patterns, pid]);
@@ -957,8 +1300,8 @@ export default function App() {
   );
 
   const mixRes = useMemo(
-    () => calcMixLoad(C, mixItems, autoStopOnWeight),
-    [C, mixItems, autoStopOnWeight]
+    () => calcMixLoad(C, mixItems, autoStopOnWeight, mixStrategy, spreadFloorFirst),
+    [C, mixItems, autoStopOnWeight, mixStrategy, spreadFloorFirst]
   );
 
   const whRes = useMemo(
@@ -1051,7 +1394,7 @@ export default function App() {
       {/* 1. CLEAN SEARATES-STYLE LEFT SIDEBAR */}
       <div
         className={`bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 z-30 ${
-          sideOpen ? 'w-full md:w-[360px] h-full' : 'w-0 h-0 overflow-hidden'
+          sideOpen ? 'w-full md:w-[375px] h-full' : 'w-0 h-0 overflow-hidden'
         }`}
       >
         {/* App Header */}
@@ -1178,19 +1521,36 @@ export default function App() {
                 </div>
               )}
 
-              {/* SeaRates Weight Limit Auto-Cutoff Toggle */}
-              <label className="flex items-center justify-between pt-2 border-t border-slate-200/70 cursor-pointer">
-                <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
-                  <Scale className="w-3.5 h-3.5 text-teal-600" />
-                  หยุดโหลดอัตโนมัติเมื่อเต็มพิกัดน้ำหนักตู้
-                </span>
-                <input
-                  type="checkbox"
-                  checked={autoStopOnWeight}
-                  onChange={(e) => setAutoStopOnWeight(e.target.checked)}
-                  className="accent-teal-600 w-4 h-4 cursor-pointer"
-                />
-              </label>
+              {/* SeaRates Weight Limit Auto-Cutoff & Floor-First Spread Toggle */}
+              <div className="pt-2 border-t border-slate-200/70 space-y-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-teal-600" />
+                    หยุดโหลดอัตโนมัติเมื่อเต็มพิกัดน้ำหนักตู้
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={autoStopOnWeight}
+                    onChange={(e) => setAutoStopOnWeight(e.target.checked)}
+                    className="accent-teal-600 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+
+                {mode !== 'pallet' && (
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-[11px] font-bold text-teal-800 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-teal-600" />
+                      กระจายสินค้าเต็มฐานพื้นตู้ก่อนซ้อนชั้นขึ้นไป
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={spreadFloorFirst}
+                      onChange={(e) => setSpreadFloorFirst(e.target.checked)}
+                      className="accent-teal-600 w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                )}
+              </div>
             </div>
           )}
 
@@ -1200,7 +1560,7 @@ export default function App() {
               {/* Product Card */}
               <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-2xs">
                 <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  ข้อมูลสินค้า (Cargo Dimensions & Weight)
+                  ข้อมูลสินค้าและการออกแบบบรรจุภัณฑ์
                 </label>
 
                 <select
@@ -1236,6 +1596,30 @@ export default function App() {
                       />
                     </div>
                   ))}
+                </div>
+
+                {/* Packaging & Load-Bearing Specification */}
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-teal-600" />
+                    ประเภทบรรจุภัณฑ์และการรับน้ำหนักกดทับ
+                  </span>
+                  <select
+                    value={singleStackClass}
+                    onChange={(e) => {
+                      const cls = e.target.value as PackagingLoadClass;
+                      setSingleStackClass(cls);
+                      const found = PACKAGING_CLASSES.find((c) => c.id === cls);
+                      if (found) setSingleLoadBearingPct(found.loadBearingPct);
+                    }}
+                    className="w-full text-[11px] p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none"
+                  >
+                    {PACKAGING_CLASSES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* SeaRates Cargo Constraints (Target Qty, Max Stack Layers, Tilt/Flip) */}
@@ -1332,7 +1716,7 @@ export default function App() {
                             )}
                           </div>
                           <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
-                            {p.r.perLayer} กล่อง/ชั้น × {p.r.layers} ชั้น
+                            ฐานพื้นตู้ {p.r.perLayer} กล่อง/ชั้น × สูง {p.r.layers} ชั้น
                             {p.r.limitedBy === 'weight' && (
                               <span className="text-amber-600 font-bold ml-1.5">· จำกัดที่พิกัดน้ำหนักตู้</span>
                             )}
@@ -1501,23 +1885,99 @@ export default function App() {
             </div>
           )}
 
-          {/* MODE 3: MULTI-SKU MIX STUFFING */}
+          {/* MODE 3: MULTI-SKU MIX STUFFING (FLOOR-SPREAD & LOAD-BEARING PRIORITY) */}
           {mode === 'mix' && (
             <div className="space-y-3.5">
+              {/* Packing Strategy Selector Card */}
+              <div className="bg-teal-50/60 border border-teal-200 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-teal-600" />
+                    โหมดกระจายสินค้าและจัดเรียงชั้น (Stacking Mode)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 bg-white p-1 rounded-xl border border-teal-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setMixStrategy('vertical_layered')}
+                    className={`py-2 px-2 rounded-lg text-[10px] font-extrabold transition cursor-pointer text-center leading-tight ${
+                      mixStrategy === 'vertical_layered'
+                        ? 'bg-teal-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>ปูฐานเต็มพื้นตู้ก่อนซ้อนชั้น</div>
+                    <div className="text-[8px] opacity-85 font-semibold mt-0.5">
+                      (100% & หนักอยู่ล่าง · เบาอยู่บน)
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMixStrategy('horizontal_zones')}
+                    className={`py-2 px-2 rounded-lg text-[10px] font-extrabold transition cursor-pointer text-center leading-tight ${
+                      mixStrategy === 'horizontal_zones'
+                        ? 'bg-teal-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>แบ่งโซนตามความยาวตู้</div>
+                    <div className="text-[8px] opacity-85 font-semibold mt-0.5">
+                      (เรียงบล็อกหน้า-หลังตามโซน)
+                    </div>
+                  </button>
+                </div>
+
+                {mixStrategy === 'vertical_layered' ? (
+                  <div className="text-[10px] text-teal-800 bg-white/80 rounded-xl p-2 border border-teal-100 leading-relaxed">
+                    💡 <strong>ระบบจัดเรียงอัตโนมัติ:</strong> ปูฐานสินค้าให้เต็มแถวและคอลัมน์ทั่วพื้นตู้ก่อน แล้วเรียงซ้อนขึ้นทีละชั้น โดยนำสินค้าที่ <strong>รับน้ำหนักได้ 100% และหนักกว่าไว้ชั้นล่างสุด</strong> ส่วนสินค้าที่รับน้ำหนักน้อยกว่าหรือเบากว่าวางซ้อนด้านบน
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="bg-slate-200 rounded-full overflow-hidden flex h-2">
+                      {mixItems.map((it, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            width: `${Math.min(100, (it.allocLen / C.l) * 100)}%`,
+                            backgroundColor: ICSS[i % ICSS.length],
+                          }}
+                          className="h-full transition-all"
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold">
+                      <span className="text-slate-500">โซนความยาวตู้: {Math.round((mixUsed / C.l) * 100)}%</span>
+                      <button
+                        type="button"
+                        onClick={autoAllocateMixByQty}
+                        className="text-teal-700 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        เฉลี่ยโซนตามปริมาตร
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between items-center">
                 <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  รายการสินค้าคละตู้ ({mixItems.length}/6 กลุ่ม)
+                  รายการสินค้า ({mixItems.length}/6 กลุ่ม)
                 </label>
                 <div className="flex gap-1.5">
                   <button
-                    onClick={autoAllocateMixByQty}
-                    className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer shadow-2xs flex items-center gap-1"
-                    title="คำนวณสัดส่วนความยาวตู้อัตโนมัติตามจำนวนกล่องหรือแบ่งเท่ากัน"
+                    type="button"
+                    onClick={sortMixItemsByLoadAndWeight}
+                    className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer shadow-2xs flex items-center gap-1"
+                    title="เรียงลำดับการ์ดจากรับน้ำหนัก 100% & หนักสุด (ชั้นล่าง) ไปหาเบาสุด (ชั้นบน)"
                   >
-                    <Sparkles className="w-3 h-3 text-teal-600" />
-                    จัดสัดส่วนอัตโนมัติ
+                    <ArrowUpDown className="w-3 h-3 text-teal-600" />
+                    เรียงตามการรับน้ำหนัก
                   </button>
                   <button
+                    type="button"
                     onClick={addMix}
                     disabled={mixItems.length >= 6}
                     className="bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-xs cursor-pointer disabled:opacity-40"
@@ -1527,32 +1987,21 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Zone allocation visual bar */}
-              <div className="bg-white border border-slate-200 rounded-xl p-2.5 space-y-1.5">
-                <div className="bg-slate-100 rounded-full overflow-hidden flex h-2.5">
-                  {mixItems.map((it, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: `${Math.min(100, (it.allocLen / C.l) * 100)}%`,
-                        backgroundColor: ICSS[i % ICSS.length],
-                      }}
-                      className="h-full transition-all"
-                    />
-                  ))}
-                </div>
-                <div className="flex justify-between text-[10px] font-bold">
-                  <span className="text-slate-500">พื้นที่ความยาวตู้ที่จัดสรร: {Math.round((mixUsed / C.l) * 100)}%</span>
-                  <span className={mixUsed > C.l ? 'text-red-500' : 'text-teal-600'}>
-                    ว่าง: {Math.max(0, Math.round(((C.l - mixUsed) / C.l) * 100))}%
-                  </span>
-                </div>
-              </div>
-
               {/* Cargo Item Cards */}
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {mixItems.map((item, idx) => {
                   const res = mixRes[idx];
+                  const loadPct = item.loadBearingPct ?? 100;
+                  const pkgClassObj =
+                    PACKAGING_CLASSES.find((c) => c.id === item.stackClass) ||
+                    (loadPct >= 100
+                      ? PACKAGING_CLASSES[0]
+                      : loadPct >= 70
+                      ? PACKAGING_CLASSES[1]
+                      : loadPct >= 45
+                      ? PACKAGING_CLASSES[2]
+                      : PACKAGING_CLASSES[3]);
+
                   return (
                     <div
                       key={idx}
@@ -1560,18 +2009,21 @@ export default function App() {
                       style={{ borderLeft: `5px solid ${ICSS[idx % ICSS.length]}` }}
                     >
                       <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span
-                            className="w-2.5 h-2.5 rounded-full"
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: ICSS[idx % ICSS.length] }}
                           />
                           <span className="text-xs font-black text-slate-800">
-                            ลำดับโหลดที่ {idx + 1}
+                            กลุ่มที่ {idx + 1}
+                          </span>
+                          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full border ${pkgClassObj.badgeClass}`}>
+                            {pkgClassObj.shortLabel}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <span
-                            className="text-xs font-black px-2 py-0.5 rounded-full bg-slate-100"
+                            className="text-xs font-black px-2 py-0.5 rounded-full bg-slate-100 tabular-nums"
                             style={{ color: ICSS[idx % ICSS.length] }}
                           >
                             {(res ? res.total : 0).toLocaleString()} กล่อง
@@ -1588,6 +2040,7 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* SKU Selector */}
                       <select
                         value={item.skuId}
                         onChange={(e) => setMixSku(idx, e.target.value)}
@@ -1602,44 +2055,98 @@ export default function App() {
                           ))}
                       </select>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="text-[9px] text-slate-400 font-bold block mb-1">
-                            สัดส่วนความยาวตู้ (%)
+                      {/* Packaging Type & Load Bearing Capacity (%) */}
+                      <div className="bg-slate-50/80 border border-slate-200/70 rounded-xl p-2 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-extrabold text-slate-500 uppercase flex items-center gap-1">
+                            <Shield className="w-3 h-3 text-teal-600" />
+                            การออกแบบบรรจุภัณฑ์ & พิกัดรับน้ำหนัก
                           </span>
-                          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1">
+                          <span className="text-[10px] font-black text-teal-700">
+                            {item.box.wt} กก./กล่อง
+                          </span>
+                        </div>
+
+                        <select
+                          value={item.stackClass || 'heavy_100'}
+                          onChange={(e) => setMixPackagingClass(idx, e.target.value as PackagingLoadClass)}
+                          className="w-full text-[11px] p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 outline-none cursor-pointer"
+                        >
+                          {PACKAGING_CLASSES.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          <span className="text-[10px] font-bold text-slate-500">
+                            รับน้ำหนักกดทับได้ (% Load Bearing):
+                          </span>
+                          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 w-24">
                             <input
                               type="number"
-                              min="0"
-                              max="100"
-                              value={Math.round((item.allocLen / C.l) * 100)}
-                              onChange={(e) => {
-                                const pct = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-                                setMixAlloc(idx, Math.round((pct / 100) * C.l));
-                              }}
-                              className="w-full bg-transparent text-xs font-bold text-slate-800 outline-none text-center"
+                              min={0}
+                              max={100}
+                              value={loadPct}
+                              onChange={(e) => setMixLoadBearingPct(idx, parseInt(e.target.value) || 0)}
+                              className="w-full bg-transparent text-xs font-black text-teal-700 text-center outline-none"
                             />
                             <span className="text-[10px] font-bold text-slate-400">%</span>
                           </div>
                         </div>
+                      </div>
 
+                      {/* Target Quantity & Pattern */}
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold block mb-1">
-                            จำกัดจำนวนกล่อง (0 = เต็มโซน)
+                          <span className="text-[9px] text-slate-500 font-bold block mb-1">
+                            จำนวนสินค้า (กล่อง)
                           </span>
                           <input
                             type="number"
                             min={0}
-                            placeholder="เต็มโซน"
+                            placeholder="ระบุจำนวนกล่อง"
                             value={item.targetQty || ''}
                             onChange={(e) => setMixTargetQty(idx, parseInt(e.target.value) || 0)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-teal-700 text-center outline-none"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-black text-teal-700 text-center outline-none focus:ring-2 focus:ring-teal-500"
                           />
                         </div>
+
+                        {mixStrategy === 'horizontal_zones' ? (
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-bold block mb-1">
+                              สัดส่วนความยาวตู้ (%)
+                            </span>
+                            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={Math.round((item.allocLen / C.l) * 100)}
+                                onChange={(e) => {
+                                  const pct = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                                  setMixAlloc(idx, Math.round((pct / 100) * C.l));
+                                }}
+                                className="w-full bg-transparent text-xs font-bold text-slate-800 outline-none text-center"
+                              />
+                              <span className="text-[10px] font-bold text-slate-400">%</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-bold block mb-1">
+                              ฐานเต็มพื้นตู้ × จำนวนชั้น
+                            </span>
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-slate-600 text-center">
+                              {res ? `${res.perLayer} กล่อง/ชั้น × ${res.layers} ชั้น` : '-'}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div>
-                        <span className="text-[9px] text-slate-400 font-bold block mb-1">รูปแบบการเรียง (Pattern)</span>
+                        <span className="text-[9px] text-slate-400 font-bold block mb-1">รูปแบบการเรียงต่อชั้น (Layer Pattern)</span>
                         <select
                           value={item.pid || 'p3_3_2'}
                           onChange={(e) => {
@@ -1648,10 +2155,10 @@ export default function App() {
                           }}
                           className="w-full text-[11px] p-1.5 bg-slate-50 border border-slate-200 rounded-lg outline-none cursor-pointer font-semibold text-slate-700"
                         >
-                          {getPatterns({ l: item.allocLen, w: C.w, h: C.h }, item.box.L, item.box.W, item.box.H, item.box.wt).map(
+                          {getPatterns({ l: C.l, w: C.w, h: item.box.H }, item.box.L, item.box.W, item.box.H, item.box.wt, { maxLayers: 1 }).map(
                             (p) => (
                               <option key={p.id} value={p.id}>
-                                {p.name} (สูงสุด {(p.r ? p.r.total : 0).toLocaleString()} กล่อง)
+                                {p.name} (ฐานเต็มพื้นตู้ {(p.r ? p.r.perLayer : 0).toLocaleString()} กล่อง/ชั้น)
                               </option>
                             )
                           )}
@@ -1805,10 +2312,10 @@ export default function App() {
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-600 leading-relaxed space-y-2.5 font-medium">
               <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
                 <Database className="w-4 h-4 text-teal-600" />
-                จัดการฐานข้อมูลสินค้า (SKU Catalog)
+                จัดการฐานข้อมูลสินค้าและการออกแบบบรรจุภัณฑ์
               </span>
               <p>
-                เพิ่ม แก้ไข หรือซิงค์ข้อมูลขนาดกล่องสินค้าจาก Google Sheets เพื่อนำไปใช้คำนวณในทุกโหมดโดยอัตโนมัติ
+                กำหนดขนาด น้ำหนัก ประเภทบรรจุภัณฑ์ (ลัง 5 ชั้น, ลัง 3 ชั้น, ฟิล์มหด, ถาด) และ % การรับน้ำหนักกดทับ เพื่อใช้จัดเรียงชั้นล่าง/ชั้นบนโดยอัตโนมัติ
               </p>
             </div>
           )}
@@ -1832,7 +2339,13 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black text-white">{cKey}</span>
                   <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full font-bold">
-                    {mode === 'single' ? actPat.name : mode === 'pallet' ? `Palletized (${palRes.totalPallets} พาเลท)` : 'Multi-SKU Mix'}
+                    {mode === 'single'
+                      ? actPat.name
+                      : mode === 'pallet'
+                      ? `Palletized (${palRes.totalPallets} พาเลท)`
+                      : mixStrategy === 'vertical_layered'
+                      ? 'ปูเต็มฐานพื้นตู้ · เรียงชั้นตามการรับน้ำหนัก'
+                      : 'แบ่งโซนตามความยาวตู้'}
                   </span>
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium">
