@@ -8,9 +8,15 @@ import { Plus, Trash2, HelpCircle, Package, Layers, Info, RefreshCw, Printer, Ch
 import { exportResultToPDF } from '../utils/pdfExporter';
 
 const CONTAINER_PRESETS: Container[] = [
-  { id: '20ft', name: '20ft Standard Container (ตู้ 20 ฟุต)', length: 590, width: 235, height: 239, maxWeight: 21700 },
-  { id: '40ft', name: '40ft Standard Container (ตู้ 40 ฟุต)', length: 1203, width: 235, height: 239, maxWeight: 26500 },
-  { id: '40fthq', name: '40ft High Cube Container (ตู้ 40 ฟุต HQ)', length: 1203, width: 235, height: 269, maxWeight: 26500 },
+  { id: '20ft', name: "20' Dry Container (20' DC)", length: 589, width: 235, height: 239, maxWeight: 21700 },
+  { id: '40ft', name: "40' Dry Container (40' DC)", length: 1203, width: 235, height: 239, maxWeight: 26500 },
+  { id: '40fthq', name: "40' High Cube (40' HQ)", length: 1203, width: 235, height: 269, maxWeight: 26200 },
+  { id: 'truck4w_float', name: 'รถ 4 ล้อ (เพลาลอย) - ตู้ทึบ/คอกสูง', length: 310, width: 175, height: 210, maxWeight: 5000 },
+  { id: 'truck4w_std', name: 'รถ 4 ล้อ (กระบะคอกทั่วไป)', length: 300, width: 170, height: 180, maxWeight: 4500 },
+  { id: 'truck6w_med', name: 'รถ 6 ล้อ (ขนาดกลาง) - ตู้ทึบ/คอก', length: 550, width: 210, height: 210, maxWeight: 12000 },
+  { id: 'truck6w_lrg', name: 'รถ 6 ล้อ (ขนาดใหญ่) - ตู้ทึบ/คอก', length: 720, width: 235, height: 230, maxWeight: 15000 },
+  { id: 'truck8w', name: 'รถ 8 ล้อ (2 เพลาหน้า) - ตู้ทึบ/คอก', length: 750, width: 235, height: 235, maxWeight: 21000 },
+  { id: 'truck10w', name: 'รถ 10 ล้อ (2 เพลาท้าย) - ตู้ทึบ/คอก/พื้นเรียบ', length: 760, width: 235, height: 235, maxWeight: 25000 },
 ];
 
 const CARGO_PRESETS = [

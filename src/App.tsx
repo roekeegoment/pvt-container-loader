@@ -26,28 +26,28 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 
-/* ── PRESETS ─────────────────────────────────────────────────────────────── */
-const CONT: Record<string, { l: number; w: number; h: number; maxPay: number; cbm: number }> = {
-  "20ft Standard": {
-    l: 5898,
-    w: 2352,
-    h: 2393,
-    maxPay: 22000,
-    cbm: 33.2,
+/* ── PRESETS (อ้างอิงตามมาตรฐาน SP-WH-006 Rev.00) ───────────────────────── */
+const CONT: Record<string, { l: number; w: number; h: number; maxPay: number; cbm: number; stdPallets?: string; bodyType?: string }> = {
+  "20ft Standard (20' DC)": {
+    l: 5890,
+    w: 2350,
+    h: 2390,
+    maxPay: 21700,
+    cbm: 29.0,
   },
-  "40ft Standard": {
-    l: 12032,
-    w: 2352,
-    h: 2393,
-    maxPay: 26700,
-    cbm: 67.7,
+  "40ft Standard (40' DC)": {
+    l: 12030,
+    w: 2350,
+    h: 2390,
+    maxPay: 26500,
+    cbm: 59.0,
   },
-  "40ft High Cube": {
-    l: 12032,
-    w: 2352,
-    h: 2698,
-    maxPay: 26460,
-    cbm: 76.3,
+  "40ft High Cube (40' HQ)": {
+    l: 12030,
+    w: 2350,
+    h: 2690,
+    maxPay: 26200,
+    cbm: 69.0,
   },
   "45ft High Cube": {
     l: 13556,
@@ -55,6 +55,60 @@ const CONT: Record<string, { l: number; w: number; h: number; maxPay: number; cb
     h: 2698,
     maxPay: 27600,
     cbm: 86.0,
+  },
+  "รถ 4 ล้อ (เพลาลอย)": {
+    l: 3100,
+    w: 1750,
+    h: 2100,
+    maxPay: 5000,
+    cbm: 11.0,
+    stdPallets: "2 – 3 พาเลท",
+    bodyType: "ตู้ทึบ / คอกสูง",
+  },
+  "รถ 4 ล้อ (กระบะคอกทั่วไป)": {
+    l: 3000,
+    w: 1700,
+    h: 1800,
+    maxPay: 4500,
+    cbm: 9.2,
+    stdPallets: "2 พาเลท",
+    bodyType: "กระบะคอกสูง",
+  },
+  "รถ 6 ล้อ (ขนาดกลาง)": {
+    l: 5500,
+    w: 2100,
+    h: 2100,
+    maxPay: 12000,
+    cbm: 24.0,
+    stdPallets: "6 – 8 พาเลท",
+    bodyType: "ตู้ทึบ / คอก",
+  },
+  "รถ 6 ล้อ (ขนาดใหญ่)": {
+    l: 7200,
+    w: 2350,
+    h: 2300,
+    maxPay: 15000,
+    cbm: 39.0,
+    stdPallets: "10 – 12 พาเลท",
+    bodyType: "ตู้ทึบ / คอก",
+  },
+  "รถ 8 ล้อ (2 เพลาหน้า)": {
+    l: 7500,
+    w: 2350,
+    h: 2350,
+    maxPay: 21000,
+    cbm: 41.0,
+    stdPallets: "12 พาเลท",
+    bodyType: "ตู้ทึบ / คอก",
+  },
+  "รถ 10 ล้อ (2 เพลาท้าย)": {
+    l: 7600,
+    w: 2350,
+    h: 2350,
+    maxPay: 25000,
+    cbm: 42.0,
+    stdPallets: "12 – 14 พาเลท",
+    bodyType: "ตู้ทึบ / คอก / พื้นเรียบ",
   },
 };
 
@@ -1030,8 +1084,8 @@ export default function App() {
   };
 
   // Equipment / Container Selection
-  const [cKey, setCKey] = useState<string>("20ft Standard");
-  const [customCont, setCustomCont] = useState({ l: 5898, w: 2352, h: 2393, maxPay: 22000 });
+  const [cKey, setCKey] = useState<string>("20ft Standard (20' DC)");
+  const [customCont, setCustomCont] = useState({ l: 5890, w: 2350, h: 2390, maxPay: 21700 });
   const C = useMemo(() => {
     if (cKey === "Custom Container") {
       return {
@@ -1039,7 +1093,7 @@ export default function App() {
         cbm: (customCont.l * customCont.w * customCont.h) / 1e9,
       };
     }
-    return CONT[cKey] || CONT["20ft Standard"];
+    return CONT[cKey] || CONT["20ft Standard (20' DC)"];
   }, [cKey, customCont]);
 
   // Global SeaRates Stuffing Rules
@@ -1067,7 +1121,7 @@ export default function App() {
   // 3. Multi-SKU Mix Mode States
   const [mixStrategy, setMixStrategy] = useState<'vertical_layered' | 'horizontal_zones'>('vertical_layered');
   const [mixItems, setMixItems] = useState<MixCargoItemInput[]>(() => {
-    const C0 = CONT["20ft Standard"];
+    const C0 = CONT["20ft Standard (20' DC)"];
     return [
       {
         skuId: "s2",
@@ -1531,7 +1585,7 @@ export default function App() {
               <div className="flex justify-between items-center">
                 <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Truck className="w-3.5 h-3.5 text-teal-600" />
-                  เลือกตู้คอนเทนเนอร์ (Equipment)
+                  เลือกตู้คอนเทนเนอร์ / รถบรรทุก (SP-WH-006)
                 </label>
                 <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
                   {C.cbm.toFixed(1)} m³
@@ -1543,12 +1597,27 @@ export default function App() {
                 onChange={(e) => setCKey(e.target.value)}
                 className="w-full text-xs p-2.5 bg-white border border-slate-200 text-slate-800 rounded-xl font-bold outline-none cursor-pointer hover:border-teal-400 focus:ring-2 focus:ring-teal-500"
               >
-                {Object.keys(CONT).map((k) => (
-                  <option key={k} value={k}>
-                    {k} (Max {(CONT[k].maxPay / 1000).toFixed(1)} ตัน)
-                  </option>
-                ))}
-                <option value="Custom Container">กำหนดขนาดตู้เอง (Custom Dimensions)</option>
+                <optgroup label="📦 ตู้คอนเทนเนอร์มาตรฐาน (ISO Containers)">
+                  {Object.keys(CONT)
+                    .filter((k) => !k.startsWith("รถ"))
+                    .map((k) => (
+                      <option key={k} value={k}>
+                        {k} (Payload {(CONT[k].maxPay / 1000).toFixed(1)} ตัน)
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="🚛 รถบรรทุกขนส่ง (Trucks - SP-WH-006)">
+                  {Object.keys(CONT)
+                    .filter((k) => k.startsWith("รถ"))
+                    .map((k) => (
+                      <option key={k} value={k}>
+                        {k} (พิกัด {(CONT[k].maxPay / 1000).toFixed(1)} ตัน · {CONT[k].stdPallets})
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="⚙️ กำหนดเอง">
+                  <option value="Custom Container">กำหนดขนาดตู้/รถเอง (Custom Dimensions)</option>
+                </optgroup>
               </select>
 
               {cKey === "Custom Container" ? (
@@ -1573,9 +1642,17 @@ export default function App() {
                   ))}
                 </div>
               ) : (
-                <div className="flex justify-between text-[10px] text-slate-500 font-medium px-0.5">
-                  <span>มิติภายใน: {(C.l / 10).toFixed(0)} × {(C.w / 10).toFixed(0)} × {(C.h / 10).toFixed(0)} ซม.</span>
-                  <span>พิกัด: {C.maxPay.toLocaleString()} กก.</span>
+                <div className="space-y-1 px-0.5">
+                  <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                    <span>มิติภายใน: {(C.w / 1000).toFixed(2)} × {(C.l / 1000).toFixed(2)} × {(C.h / 1000).toFixed(2)} ม.</span>
+                    <span>พิกัด: {C.maxPay.toLocaleString()} กก.</span>
+                  </div>
+                  {(C.bodyType || C.stdPallets) && (
+                    <div className="flex justify-between text-[10px] text-teal-700 font-semibold bg-teal-50/70 px-2 py-1 rounded-lg border border-teal-100">
+                      <span>ตัวถัง: {C.bodyType}</span>
+                      <span>ความจุ: {C.stdPallets}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
